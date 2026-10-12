@@ -73,7 +73,7 @@ exclude = ["src/ofm_engine/web/dist/.gitkeep"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
-filterwarnings = ["ignore::DeprecationWarning:passlib.*", "ignore:Using `httpx` with:DeprecationWarning"]
+filterwarnings = ["ignore::DeprecationWarning:passlib.*", "ignore:Using `httpx` with"]
 
 [tool.coverage.run]
 source = ["ofm_engine"]
