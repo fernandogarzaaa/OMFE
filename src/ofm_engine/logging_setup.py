@@ -77,7 +77,11 @@ class JsonFormatter(logging.Formatter):
 
 class RedactingTextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return redact_text(super().format(record))
+        # redact the message/exception only, so timestamps are never mangled by the phone pattern
+        rec = logging.makeLogRecord(record.__dict__)
+        rec.msg, rec.args = redact_text(record.getMessage()), None
+        out = super().format(rec)
+        return out if not rec.exc_text else out.replace(rec.exc_text, redact_text(rec.exc_text))
 
 
 def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:
