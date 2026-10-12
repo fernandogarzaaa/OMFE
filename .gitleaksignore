@@ -1,0 +1,7 @@
+# Reviewed false positives (gitleaks fingerprints). Do NOT add real secrets here.
+# DEV_JWT_SECRET / DEV_MASTER_KEY: public dev-only defaults; production boot refuses them (settings.production_problems)
+a22ee65d7347a1bc960beb5f40003b622c5483cd:src/ofm_engine/settings.py:generic-api-key:23
+58eab52ca5c934c32d7e6ac93f30f60f24c947fb:src/ofm_engine/settings.py:generic-api-key:22
+# test-only user passwords in the RBAC test suite
+a22ee65d7347a1bc960beb5f40003b622c5483cd:tests/test_rbac_tenancy.py:generic-api-key:180
+f630bfb2769857875fdd74df5dfa60fbe2604353:tests/test_rbac_tenancy.py:generic-api-key:147
