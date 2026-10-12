@@ -11,7 +11,7 @@ npm test             # vitest + Testing Library
 npm run build        # -> ../src/ofm_engine/web/dist (emptied each build; .gitkeep restored)
 ```
 
-Demo logins (mock mode only, password `demo1234`): `admin@demo.agency` (admin), `member@demo.agency` (member),
+Demo logins (mock mode only, password `demo-pass-2026`): `admin@demo.agency` (admin), `member@demo.agency` (member),
 `owner@demo.agency` (admin with 2FA, code `123456`).
 
 ## Layout

@@ -324,14 +324,14 @@ vulnerabilities privately: [SECURITY.md](SECURITY.md).
 <!-- QUALITY:START -->
 | Check | Result |
 |---|---|
-| Backend tests (pytest) | **199** passing on SQLite **and** PostgreSQL 17 |
+| Backend tests (pytest) | **351** collected, 350 passing + 1 Postgres-only skip on SQLite; full suite also run on PostgreSQL 17 |
 | Branch coverage | **95%** (CI gate: 90%) |
 | Frontend tests (vitest + Testing Library) | **37** passing |
 | End-to-end (built SPA ↔ real backend, `scripts/e2e_ui.sh`) | **47 / 47** |
-| Smoke test (mock mode, `scripts/smoke.sh`) | passing |
-| `pip-audit` · `bandit` · `npm audit` · `gitleaks` (full history) | clean |
-| Mutation testing (testteeth) | _pending_ |
-| Hardened test gate (genesis) | _pending_ |
+| Smoke test (mock mode, `scripts/smoke.sh`) | **27 / 27** |
+| Mutation testing ([testteeth](https://github.com/fernandogarzaaa/testteeth), 10 security/core modules) | **71.7% → 99.3%** (442/445 killed; 3 survivors are equivalent mutants) — see [`quality/mutation/RESULTS.md`](quality/mutation/RESULTS.md) |
+| Hardened test gate vs [genesis](https://github.com/fernandogarzaaa/genesis) exploit probes | `quality/gate.py` **SOUND** (0% false-accept); naive exit-code gate **EXPLOITABLE** (55.6%) — see [`quality/GENESIS.md`](quality/GENESIS.md) |
+| `pip-audit` · `bandit` · `npm audit --omit=dev` · `gitleaks` (full history) | clean |
 <!-- QUALITY:END -->
 
 How each number is produced and how to reproduce it: [docs/quality.md](docs/quality.md).
