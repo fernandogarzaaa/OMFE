@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Annotated
 from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Load .env into os.environ (without overriding real env) so per-client secrets such as
 # CLIENT_ACME_GHL_TOKEN are visible to the secret resolver, not only to declared fields.
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
     master_keys: SecretStr = SecretStr(DEV_MASTER_KEY)  # comma separated Fernet keys, first = primary
     pii_hash_salt: SecretStr = SecretStr("dev-pii-salt")
     cookie_secure: bool | None = None  # default: True in production
-    cors_origins: list[str] = Field(default_factory=list)
+    cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)  # comma separated
     # argon2id cost (OWASP baseline m=19 MiB, t=2, p=1 is the floor; defaults are stronger).
     # Tests lower these via env (ARGON2_TIME_COST=1, ARGON2_MEMORY_COST=8) for speed.
     argon2_time_cost: int = Field(default=3, ge=1)
@@ -62,7 +63,7 @@ class Settings(BaseSettings):
     login_lockout_seconds: int = 900
     webhook_tolerance_seconds: int = 300
     allow_unsigned_ghl_webhooks_in_mock: bool = True
-    outbound_allowed_hosts: list[str] = Field(default_factory=list)  # extra hosts for user webhooks
+    outbound_allowed_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)  # extra hosts for user webhooks
     outbound_allow_private: bool = False  # never enable in production
     outbound_webhooks_live: bool = False  # mock by default: deliveries are signed + logged, not sent
     bootstrap_admin_email: str | None = None
