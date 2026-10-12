@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><meta name="referrer" content="no-referrer">
+<meta http-equiv="refresh" content="2;url={{ dest }}"><title>Redirecting…</title>
+{% if pixel_id %}
+<script nonce="{{ nonce }}">
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', {{ pixel_id|tojson }});
+fbq('track', 'ViewContent', {}, {eventID: {{ event_id|tojson }}});
+</script>
+{% endif %}
+<script nonce="{{ nonce }}">setTimeout(function(){location.replace({{ dest|tojson }})}, 300);</script>
+</head><body style="font-family:system-ui;background:#0b0b10;color:#eee;text-align:center;padding-top:30vh">
+<p>Redirecting… <a href="{{ dest }}" rel="noreferrer" style="color:#a78bfa">continue</a></p>
+<span hidden data-event-id="{{ event_id }}"></span>
+</body></html>

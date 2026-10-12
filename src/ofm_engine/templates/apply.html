@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ variant.headline }} · {{ cfg.brand.name }}{% endblock %}
+{% block head %}{% set pixel_id = cfg.meta.pixel_id if cfg.features.meta_capi else "" %}{% include "_pixel.html" %}{% endblock %}
+{% block body %}
+{% if cfg.brand.logo_url %}<img src="{{ cfg.brand.logo_url }}" alt="{{ cfg.brand.name }}" height="40">{% else %}<strong>{{ cfg.brand.name }}</strong>{% endif %}
+<h1 data-variant="{{ variant.key }}">{{ variant.headline }}</h1>
+<p class="sub">{{ variant.subhead }}</p>
+<ul class="benefits">{% for b in cfg.funnel.benefits %}<li>{{ b }}</li>{% endfor %}</ul>
+<form id="apply" class="card" method="post" action="/apply/{{ slug }}" novalidate>
+  <input type="hidden" name="variant" value="{{ variant.key }}">
+  <input type="hidden" name="event_id" value="{{ event_id }}">
+  {% for k in ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","fbclid","ttclid","link"] %}
+  <input type="hidden" name="attr_{{ k }}" value="{{ query.get(k, '') }}">{% endfor %}
+  <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+  <label for="name">Name</label><input id="name" name="name" required maxlength="200" autocomplete="name">
+  <label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email">
+  <label for="phone">Phone (optional)</label><input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="32">
+  <div class="row">
+    <div><label for="instagram">Instagram</label><input id="instagram" name="instagram" placeholder="@handle" maxlength="100"></div>
+    <div><label for="instagram_followers">Followers</label><input id="instagram_followers" name="instagram_followers" type="number" min="0" inputmode="numeric"></div>
+  </div>
+  <div class="row">
+    <div><label for="tiktok">TikTok</label><input id="tiktok" name="tiktok" placeholder="@handle" maxlength="100"></div>
+    <div><label for="tiktok_followers">Followers</label><input id="tiktok_followers" name="tiktok_followers" type="number" min="0" inputmode="numeric"></div>
+  </div>
+  <label for="earnings_range">Current monthly earnings (USD)</label>
+  <select id="earnings_range" name="earnings_range">{% for r in cfg.funnel.earnings_ranges %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select>
+  <input type="hidden" id="timezone" name="timezone" value="">
+  <div class="check"><input id="age_confirmed" name="age_confirmed" type="checkbox" value="true" required><label for="age_confirmed">I confirm I am 18 years of age or older.</label></div>
+  <div class="check"><input id="consent" name="consent" type="checkbox" value="true" required><label for="consent">{{ cfg.funnel.consent_text }}{% if cfg.funnel.privacy_url %} <a href="{{ cfg.funnel.privacy_url }}">Privacy policy</a>{% endif %}</label></div>
+  <p class="err" id="err" role="alert"></p>
+  <button type="submit">{{ cfg.funnel.cta }}</button>
+</form>
+<div id="done" class="card" hidden><h2>🎉</h2><p>{{ cfg.funnel.thank_you }}</p>{% if cfg.funnel.booking_url %}<a class="btn" href="{{ cfg.funnel.booking_url }}" rel="noopener">Book your intro call</a>{% endif %}</div>
+<footer>{{ cfg.brand.name }} · 18+ creators only{% if cfg.brand.support_email %} · {{ cfg.brand.support_email }}{% endif %}</footer>
+<script nonce="{{ nonce }}">
+(function(){
+  var f=document.getElementById('apply'),err=document.getElementById('err');
+  try{document.getElementById('timezone').value=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+  function ck(n){var m=document.cookie.match('(?:^|; )'+n+'=([^;]*)');return m?decodeURIComponent(m[1]):''}
+  f.addEventListener('submit',function(e){
+    e.preventDefault();err.textContent='';
+    var d=new FormData(f);
+    if(!d.get('age_confirmed')||!d.get('consent')){err.textContent='Please confirm you are 18+ and agree to be contacted.';return}
+    var socials={},followers={},attr={};
+    ['instagram','tiktok'].forEach(function(p){if(d.get(p))socials[p]=d.get(p);var n=parseInt(d.get(p+'_followers')||'0',10);if(n>0)followers[p]=n});
+    d.forEach(function(v,k){if(k.indexOf('attr_')===0&&v)attr[k.slice(5)]=v});
+    if(ck('_fbc'))attr.fbc=ck('_fbc');if(ck('_fbp'))attr.fbp=ck('_fbp');
+    var body={name:d.get('name'),email:d.get('email'),phone:d.get('phone')||null,socials:socials,followers:followers,
+      earnings_range:d.get('earnings_range'),timezone:d.get('timezone'),age_confirmed:true,consent:true,
+      variant:d.get('variant'),event_id:d.get('event_id'),attribution:attr,website:d.get('website')||''};
+    fetch('/api/v1/public/{{ slug }}/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+      .then(function(res){
+        if(!res.ok){err.textContent=(res.j.error&&res.j.error.message)||'Something went wrong.';return}
+        if(window.fbq)fbq('track','Lead',{},{eventID:body.event_id});
+        f.hidden=true;document.getElementById('done').hidden=false;
+      }).catch(function(){err.textContent='Network error — please try again.'});
+  });
+})();
+</script>
+{% endblock %}

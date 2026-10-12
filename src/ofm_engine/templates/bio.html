@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ creator.display_name }}{% endblock %}
+{% block head %}{% set pixel_id = cfg.meta.pixel_id if cfg.features.meta_capi else "" %}{% include "_pixel.html" %}{% endblock %}
+{% block body %}
+{% if creator.avatar_url %}<img class="avatar" src="{{ creator.avatar_url }}" alt="{{ creator.display_name }}">{% endif %}
+<h1 style="text-align:center">{{ creator.display_name }}</h1>
+<p class="sub" style="text-align:center">{{ creator.bio }}</p>
+{% for l in creator.bio_links %}<a class="btn" href="{{ l.url }}" rel="noopener">{{ l.label }}</a>{% endfor %}
+<footer>Managed by {{ cfg.brand.name }}</footer>
+{% endblock %}

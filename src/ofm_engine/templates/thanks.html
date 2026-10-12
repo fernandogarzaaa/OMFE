@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="card"><h1>{% if error %}Almost there{% else %}🎉 Thank you{% endif %}</h1>
+<p>{% if error %}{{ error }}{% else %}{{ cfg.funnel.thank_you }}{% endif %}</p>
+{% if error %}<a class="btn" href="/apply/{{ slug }}">Go back</a>{% elif cfg.funnel.booking_url %}<a class="btn" href="{{ cfg.funnel.booking_url }}" rel="noopener">Book your intro call</a>{% endif %}</div>
+{% endblock %}
