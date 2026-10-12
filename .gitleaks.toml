@@ -1,0 +1,8 @@
+# Extends the default gitleaks rules.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives"
+# quality/test-manifest.json holds sha256 hashes of test files, not secrets.
+paths = ['''quality/test-manifest\.json''']
