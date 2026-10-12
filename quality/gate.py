@@ -385,7 +385,10 @@ def run_pytest(
         f.write_text(f"def {name}():\n    assert False, 'gate canary must fail'\n")
         canaries[name] = f
     report = secret_dir / f"{secrets.token_hex(8)}.xml"
-    cmd = [sys.executable, "-E", "-s", "-m", "pytest", *test_args]
+    # Fresh bytecode cache outside the repo: a stale __pycache__ entry with matching
+    # mtime+size (e.g. "a + b" -> "a - b" within the same second) must never mask a change.
+    cmd = [sys.executable, "-E", "-s", "-X", f"pycache_prefix={secret_dir / 'pyc'}"]
+    cmd += ["-m", "pytest", *test_args]
     cmd += ["-c", str(config), "--rootdir", str(root), "-o", "addopts=", "--strict-markers"]
     cmd += ["-p", "no:cacheprovider", "-q", f"--junitxml={report}", "-o", "junit_family=xunit2"]
     for p in plugins:
@@ -514,7 +517,9 @@ def gate(root: Path, manifest: dict, config: Path, test_args: list[str]) -> Repo
 
 # --------------------------------------------------------------------------- manifest
 def collect_nodeids(root: Path, config: Path, test_args: list[str], plugins: list[str]) -> list[str]:
-    cmd = [sys.executable, "-E", "-s", "-m", "pytest", *test_args, "--collect-only", "-q"]
+    pyc = tempfile.mkdtemp(prefix="gate-pyc-")
+    cmd = [sys.executable, "-E", "-s", "-X", f"pycache_prefix={pyc}"]
+    cmd += ["-m", "pytest", *test_args, "--collect-only", "-q"]
     cmd += ["-c", str(config), "--rootdir", str(root), "-o", "addopts=", "-p", "no:cacheprovider"]
     for p in plugins:
         cmd += ["-p", p]
