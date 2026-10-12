@@ -29,31 +29,52 @@ router = APIRouter(tags=["data"])
 
 
 @router.post("/revenue/import")
-async def import_revenue(request: Request, file: UploadFile = File(...), mapping: str = Form(default="{}"),
-                         p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+async def import_revenue(
+    request: Request,
+    file: UploadFile = File(...),
+    mapping: str = Form(default="{}"),
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     content = await file.read(revenue_svc.MAX_BYTES + 1)
     try:
         raw_map = json.loads(mapping or "{}")
         if not isinstance(raw_map, dict):
             raise ValueError("mapping must be a JSON object")
         base = tenant_ctx(db, p).config.revenue_mapping.model_dump()
-        cfg = RevenueMapping.model_validate({**base, **{k: v for k, v in raw_map.items() if v not in (None, "")}})
+        cfg = RevenueMapping.model_validate(
+            {**base, **{k: v for k, v in raw_map.items() if v not in (None, "")}}
+        )
     except (ValueError, ValidationError) as exc:
         raise ApiError(422, "invalid_mapping", f"mapping: {str(exc)[:200]}") from exc
     try:
-        res = await run_in_threadpool(revenue_svc.import_csv, db, p.tenant_id, content, cfg,
-                                      (file.filename or "upload.csv")[:200])
+        res = await run_in_threadpool(
+            revenue_svc.import_csv, db, p.tenant_id, content, cfg, (file.filename or "upload.csv")[:200]
+        )
     except revenue_svc.ImportError_ as exc:
         raise ApiError(422, "invalid_csv", str(exc)) from exc
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="revenue.import",
-                 meta={"imported": res.imported, "duplicates": res.duplicates}, ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="revenue.import",
+        meta={"imported": res.imported, "duplicates": res.duplicates},
+        ip=client_ip(request),
+    )
     return res.as_dict()
 
 
 @router.get("/revenue")
-def list_revenue(creator_id: str | None = None, from_: date | None = Query(default=None, alias="from"),
-                 to: date | None = None, limit: int = 100, cursor: str | None = None,
-                 p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def list_revenue(
+    creator_id: str | None = None,
+    from_: date | None = Query(default=None, alias="from"),
+    to: date | None = None,
+    limit: int = 100,
+    cursor: str | None = None,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     stmt = select(RevenueRecord).where(RevenueRecord.tenant_id == p.tenant_id)
     if creator_id:
         stmt = stmt.where(RevenueRecord.creator_id == parse_uuid(creator_id, "creator"))
@@ -65,8 +86,11 @@ def list_revenue(creator_id: str | None = None, from_: date | None = Query(defau
 
 
 @router.get("/kpis")
-def kpis(range: Literal["7d", "30d", "90d"] = "30d", p: Principal = Depends(require_member),  # noqa: A002
-         db: Session = Depends(get_db)) -> dict[str, Any]:
+def kpis(
+    range: Literal["7d", "30d", "90d"] = "30d",
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     return get_kpis(db, p.tenant_id, range)
 
 
@@ -91,8 +115,14 @@ def _kpi_delta(rows: list[Any]) -> dict[str, int]:
     return d
 
 
-EVENT_TYPES = {"click": "click", "lead": "lead", "lead_stage": "lead", "capi_sent": "capi_sent",
-               "revenue_import": "revenue_import", "job_failed": "job_failed"}
+EVENT_TYPES = {
+    "click": "click",
+    "lead": "lead",
+    "lead_stage": "lead",
+    "capi_sent": "capi_sent",
+    "revenue_import": "revenue_import",
+    "job_failed": "job_failed",
+}
 
 
 def _fetch(tenant_id: Any, since: int) -> tuple[list[Any], int]:
@@ -109,8 +139,9 @@ def _fetch(tenant_id: Any, since: int) -> tuple[list[Any], int]:
 
 
 @router.get("/live/stream")
-async def live_stream(request: Request, max_seconds: float = 300.0, p: Principal = Depends(require_member)
-                      ) -> StreamingResponse:
+async def live_stream(
+    request: Request, max_seconds: float = 300.0, p: Principal = Depends(require_member)
+) -> StreamingResponse:
     """Server-Sent Events. Resumable with Last-Event-ID; ends after `max_seconds` (clients reconnect)."""
     max_seconds = max(0.5, min(max_seconds, 3600.0))
     last_id = request.headers.get("last-event-id") or request.query_params.get("last_event_id")
@@ -135,8 +166,11 @@ async def live_stream(request: Request, max_seconds: float = 300.0, p: Principal
             if rows:
                 for r in rows:
                     data = dict(r.data or {})
-                    yield _sse("event", {"type": EVENT_TYPES.get(r.kind, r.kind), "payload": data,
-                                         "at": iso(r.created_at)}, r.seq)
+                    yield _sse(
+                        "event",
+                        {"type": EVENT_TYPES.get(r.kind, r.kind), "payload": data, "at": iso(r.created_at)},
+                        r.seq,
+                    )
                     since = r.seq
                 yield _sse("kpi", _kpi_delta(rows))
                 continue
@@ -147,5 +181,8 @@ async def live_stream(request: Request, max_seconds: float = 300.0, p: Principal
                 last_beat = loop.time()
             await live.broker.wait(tid, timeout=min(2.0, max(0.05, deadline - loop.time())))
 
-    return StreamingResponse(gen(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )

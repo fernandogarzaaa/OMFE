@@ -63,6 +63,6 @@ def make_limiter(redis_url: str | None) -> RateLimiter:
     if redis_url:  # pragma: no cover
         try:
             return RateLimiter(RedisBackend(redis_url))
-        except Exception:  # noqa: BLE001 - fall back to memory if redis lib/conn missing
+        except Exception:
             return RateLimiter()
     return RateLimiter()

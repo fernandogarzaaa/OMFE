@@ -102,7 +102,9 @@ def fetch_since(db: Session, tenant_id: uuid.UUID, since: int, limit: int = 100)
 
 
 def latest_seq(db: Session, tenant_id: uuid.UUID) -> int:
-    row = db.scalar(select(Activity.seq).where(Activity.tenant_id == tenant_id).order_by(Activity.seq.desc()).limit(1))
+    row = db.scalar(
+        select(Activity.seq).where(Activity.tenant_id == tenant_id).order_by(Activity.seq.desc()).limit(1)
+    )
     return int(row or 0)
 
 
@@ -125,7 +127,7 @@ def start_listeners() -> list[threading.Thread]:  # pragma: no cover - needs PG/
                         broker.wake(msg["data"].decode())
 
             threads.append(threading.Thread(target=_redis_loop, daemon=True, name="redis-listener"))
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.warning("redis unavailable; falling back to polling")
     if s.database_url.startswith(("postgres", "postgresql")):
 
@@ -141,7 +143,7 @@ def start_listeners() -> list[threading.Thread]:  # pragma: no cover - needs PG/
                         conn.execute(f"LISTEN {CHANNEL}")
                         for note in conn.notifies():
                             broker.wake(note.payload)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     log.warning("pg listener reconnecting")
                     threading.Event().wait(2.0)
 

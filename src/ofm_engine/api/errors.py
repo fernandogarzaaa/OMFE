@@ -11,7 +11,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str = "", headers: dict[str, str] | None = None) -> None:
+    def __init__(
+        self, status: int, code: str, message: str = "", headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(message or code)
         self.status = status
         self.code = code
@@ -26,9 +28,18 @@ def error_body(code: str, message: str, **extra: Any) -> dict[str, Any]:
 
 
 _STATUS_CODES = {
-    400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed",
-    409: "conflict", 413: "payload_too_large", 415: "unsupported_media_type", 422: "validation_error",
-    429: "rate_limited", 500: "internal_error", 503: "unavailable",
+    400: "bad_request",
+    401: "unauthorized",
+    403: "forbidden",
+    404: "not_found",
+    405: "method_not_allowed",
+    409: "conflict",
+    413: "payload_too_large",
+    415: "unsupported_media_type",
+    422: "validation_error",
+    429: "rate_limited",
+    500: "internal_error",
+    503: "unavailable",
 }
 
 
@@ -45,7 +56,9 @@ def install_handlers(app: FastAPI) -> None:
     async def _http_error(_req: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _STATUS_CODES.get(exc.status_code, "error")
         msg = exc.detail if isinstance(exc.detail, str) else code
-        return JSONResponse(error_body(code, msg), status_code=exc.status_code, headers=getattr(exc, "headers", None))
+        return JSONResponse(
+            error_body(code, msg), status_code=exc.status_code, headers=getattr(exc, "headers", None)
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_req: Request, exc: RequestValidationError) -> JSONResponse:

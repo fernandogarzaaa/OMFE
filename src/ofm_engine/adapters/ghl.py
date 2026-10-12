@@ -8,7 +8,8 @@ Verified against the official docs (marketplace.gohighlevel.com/docs, Oct 2026):
 * POST /contacts/{contactId}/tags            {"tags": [...]}  (upsert `tags` would overwrite)
 * POST /contacts/{contactId}/notes           {"body": "..."}
 * POST /contacts/{contactId}/workflow/{workflowId}
-* POST /opportunities/                       {pipelineId, locationId, name, pipelineStageId, status, contactId}
+* POST /opportunities/                       {pipelineId, locationId, name, pipelineStageId,
+                                              status, contactId}
 * PUT  /opportunities/{id}                   {pipelineStageId, status}
 * GET  /opportunities/pipelines?locationId=
 * GET  /calendars/?locationId=
@@ -70,8 +71,16 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(400, json={"message": "Version header required"})
     if path == "/contacts/upsert" and request.method == "POST":
         key = body.get("email") or body.get("phone") or body.get("name", "")
-        return httpx.Response(200, json={"new": True, "contact": {"id": _mock_id("c", body.get("locationId", ""), key),
-                                                                 "locationId": body.get("locationId")}})
+        return httpx.Response(
+            200,
+            json={
+                "new": True,
+                "contact": {
+                    "id": _mock_id("c", body.get("locationId", ""), key),
+                    "locationId": body.get("locationId"),
+                },
+            },
+        )
     if path.endswith("/tags") and request.method == "POST":
         return httpx.Response(201, json={"tags": body.get("tags", [])})
     if path.endswith("/notes") and request.method == "POST":
@@ -79,21 +88,45 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
     if "/workflow/" in path and request.method == "POST":
         return httpx.Response(200, json={"succeded": True})
     if path in ("/opportunities/", "/opportunities") and request.method == "POST":
-        return httpx.Response(201, json={"opportunity": {"id": _mock_id("o", body.get("contactId", "")),
-                                                         "pipelineStageId": body.get("pipelineStageId")}})
+        return httpx.Response(
+            201,
+            json={
+                "opportunity": {
+                    "id": _mock_id("o", body.get("contactId", "")),
+                    "pipelineStageId": body.get("pipelineStageId"),
+                }
+            },
+        )
     if path.startswith("/opportunities/") and request.method == "PUT":
         return httpx.Response(200, json={"opportunity": {"id": path.rsplit("/", 1)[-1], **body}})
     if path == "/opportunities/pipelines":
-        return httpx.Response(200, json={"pipelines": [{
-            "id": "mock_pipeline", "name": "Creator Recruitment",
-            "stages": [{"id": f"mock_stage_{s}", "name": s.title()} for s in
-                       ("new", "qualified", "booked", "signed", "lost")]}]})
+        return httpx.Response(
+            200,
+            json={
+                "pipelines": [
+                    {
+                        "id": "mock_pipeline",
+                        "name": "Creator Recruitment",
+                        "stages": [
+                            {"id": f"mock_stage_{s}", "name": s.title()}
+                            for s in ("new", "qualified", "booked", "signed", "lost")
+                        ],
+                    }
+                ]
+            },
+        )
     if path in ("/calendars/", "/calendars"):
-        return httpx.Response(200, json={"calendars": [{"id": "mock_calendar", "name": "Creator Intro Call"}]})
+        return httpx.Response(
+            200, json={"calendars": [{"id": "mock_calendar", "name": "Creator Intro Call"}]}
+        )
     if path.endswith("/customFields"):
-        return httpx.Response(200, json={"customFields": [{"id": "mock_cf_score", "fieldKey": "contact.lead_score"}]})
+        return httpx.Response(
+            200, json={"customFields": [{"id": "mock_cf_score", "fieldKey": "contact.lead_score"}]}
+        )
     if path.startswith("/locations/"):
-        return httpx.Response(200, json={"location": {"id": path.rsplit("/", 1)[-1], "name": "Mock Location"}})
+        return httpx.Response(
+            200, json={"location": {"id": path.rsplit("/", 1)[-1], "name": "Mock Location"}}
+        )
     if path.startswith("/hooks/"):
         return httpx.Response(200, json={"status": "Success: request sent to trigger execution server"})
     return httpx.Response(404, json={"message": f"mock route not found: {request.method} {path}"})
@@ -147,11 +180,22 @@ class GHLClient:
         self._req("POST", f"/contacts/{contact_id}/workflow/{workflow_id}", json={})
 
     # --- opportunities --------------------------------------------------------------
-    def create_opportunity(self, *, contact_id: str, pipeline_id: str, stage_id: str, name: str,
-                           monetary_value: float | None = None) -> str:
+    def create_opportunity(
+        self,
+        *,
+        contact_id: str,
+        pipeline_id: str,
+        stage_id: str,
+        name: str,
+        monetary_value: float | None = None,
+    ) -> str:
         payload: dict[str, Any] = {
-            "pipelineId": pipeline_id, "locationId": self.location_id, "name": name,
-            "pipelineStageId": stage_id, "status": "open", "contactId": contact_id,
+            "pipelineId": pipeline_id,
+            "locationId": self.location_id,
+            "name": name,
+            "pipelineStageId": stage_id,
+            "status": "open",
+            "contactId": contact_id,
         }
         if monetary_value is not None:
             payload["monetaryValue"] = monetary_value
@@ -159,14 +203,21 @@ class GHLClient:
         return str(data["opportunity"]["id"])
 
     def update_opportunity_stage(self, opportunity_id: str, stage_id: str, status: str = "open") -> None:
-        self._req("PUT", f"/opportunities/{opportunity_id}", json={"pipelineStageId": stage_id, "status": status})
+        self._req(
+            "PUT", f"/opportunities/{opportunity_id}", json={"pipelineStageId": stage_id, "status": status}
+        )
 
     def list_pipelines(self) -> list[dict[str, Any]]:
-        return list(self._req("GET", "/opportunities/pipelines", params={"locationId": self.location_id})
-                    .get("pipelines", []))
+        return list(
+            self._req("GET", "/opportunities/pipelines", params={"locationId": self.location_id}).get(
+                "pipelines", []
+            )
+        )
 
     def list_calendars(self) -> list[dict[str, Any]]:
-        return list(self._req("GET", "/calendars/", params={"locationId": self.location_id}).get("calendars", []))
+        return list(
+            self._req("GET", "/calendars/", params={"locationId": self.location_id}).get("calendars", [])
+        )
 
     def list_custom_fields(self) -> list[dict[str, Any]]:
         return list(self._req("GET", f"/locations/{self.location_id}/customFields").get("customFields", []))

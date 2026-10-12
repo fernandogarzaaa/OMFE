@@ -31,16 +31,25 @@ class LeadPatch(BaseModel):
 
 
 def get_lead(db: Session, p: Principal, lead_id: str) -> Lead:
-    lead = db.scalar(select(Lead).where(Lead.tenant_id == p.tenant_id, Lead.id == parse_uuid(lead_id, "lead"),
-                                        Lead.deleted_at.is_(None)))
+    lead = db.scalar(
+        select(Lead).where(
+            Lead.tenant_id == p.tenant_id, Lead.id == parse_uuid(lead_id, "lead"), Lead.deleted_at.is_(None)
+        )
+    )
     if lead is None:
         raise not_found("lead")
     return lead
 
 
 @router.get("/leads")
-def list_leads(stage: Stage | None = None, tier: str | None = None, limit: int = 50, cursor: str | None = None,
-               p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def list_leads(
+    stage: Stage | None = None,
+    tier: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     stmt = select(Lead).where(Lead.tenant_id == p.tenant_id, Lead.deleted_at.is_(None))
     if stage:
         stmt = stmt.where(Lead.stage == stage)
@@ -50,13 +59,20 @@ def list_leads(stage: Stage | None = None, tier: str | None = None, limit: int =
 
 
 @router.get("/leads/{lead_id}")
-def read_lead(lead_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def read_lead(
+    lead_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     return lead_out(get_lead(db, p, lead_id))
 
 
 @router.patch("/leads/{lead_id}")
-def patch_lead(lead_id: str, body: LeadPatch, request: Request, p: Principal = Depends(require_member),
-               db: Session = Depends(get_db)) -> dict[str, Any]:
+def patch_lead(
+    lead_id: str,
+    body: LeadPatch,
+    request: Request,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     lead = get_lead(db, p, lead_id)
     data = body.model_dump(exclude_none=True)
     for key in ("name", "phone", "timezone"):
@@ -66,27 +82,54 @@ def patch_lead(lead_id: str, body: LeadPatch, request: Request, p: Principal = D
         lead.email = str(data["email"]).lower()
     if "stage" in data:
         lead_svc.change_stage(tenant_ctx(db, p), lead, data["stage"])
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="lead.update",
-                 target=str(lead.id), meta={"fields": sorted(data), "stage": data.get("stage")}, ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="lead.update",
+        target=str(lead.id),
+        meta={"fields": sorted(data), "stage": data.get("stage")},
+        ip=client_ip(request),
+    )
     return lead_out(lead)
 
 
 @router.post("/leads/{lead_id}/rescore")
-def rescore(lead_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def rescore(
+    lead_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     lead = get_lead(db, p, lead_id)
     lead_svc.rescore(tenant_ctx(db, p), lead)
     return lead_out(lead)
 
 
 @router.get("/pipeline")
-def pipeline(per_stage: int = 50, p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def pipeline(
+    per_stage: int = 50, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     per_stage = max(1, min(per_stage, 200))
-    counts = dict(db.execute(select(Lead.stage, func.count()).where(
-        Lead.tenant_id == p.tenant_id, Lead.deleted_at.is_(None)).group_by(Lead.stage)).all())
+    counts = dict(
+        db.execute(
+            select(Lead.stage, func.count())
+            .where(Lead.tenant_id == p.tenant_id, Lead.deleted_at.is_(None))
+            .group_by(Lead.stage)
+        ).all()
+    )
     stages = []
     for key, label in LEAD_STAGES:
-        rows = db.scalars(select(Lead).where(Lead.tenant_id == p.tenant_id, Lead.deleted_at.is_(None), Lead.stage == key)
-                          .order_by(Lead.score.desc(), Lead.created_at.desc()).limit(per_stage)).all()
-        stages.append({"key": key, "label": label, "count": int(counts.get(key, 0)),
-                       "leads": [lead_out(r) for r in rows]})
+        rows = db.scalars(
+            select(Lead)
+            .where(Lead.tenant_id == p.tenant_id, Lead.deleted_at.is_(None), Lead.stage == key)
+            .order_by(Lead.score.desc(), Lead.created_at.desc())
+            .limit(per_stage)
+        ).all()
+        stages.append(
+            {
+                "key": key,
+                "label": label,
+                "count": int(counts.get(key, 0)),
+                "leads": [lead_out(r) for r in rows],
+            }
+        )
     return {"stages": stages}

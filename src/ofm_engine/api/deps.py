@@ -73,8 +73,11 @@ def load_user_from_access(db: Session, token: str) -> tuple[User, tokens.AccessC
         raise ApiError(401, "unauthorized", "invalid or expired session") from exc
     user = db.get(User, claims.user_id)
     if (
-        user is None or user.deleted_at is not None or not user.is_active
-        or user.tenant_id != claims.tenant_id or user.token_version != claims.token_version
+        user is None
+        or user.deleted_at is not None
+        or not user.is_active
+        or user.tenant_id != claims.tenant_id
+        or user.token_version != claims.token_version
     ):
         raise ApiError(401, "unauthorized", "session revoked")
     tenant = db.get(Tenant, user.tenant_id)

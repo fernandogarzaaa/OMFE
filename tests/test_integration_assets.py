@@ -51,10 +51,23 @@ def test_sample_csvs_import(db, tenants):
     from ofm_engine.services.revenue import import_csv
     from ofm_engine.tenant_config import RevenueMapping
 
-    m = RevenueMapping(date="Day", creator="Model Name", campaign="Tracking Link", gross="Earnings (USD)",
-                       new_subs="Subscribers", date_format="%m/%d/%Y", net="Net")
+    m = RevenueMapping(
+        date="Day",
+        creator="Model Name",
+        campaign="Tracking Link",
+        gross="Earnings (USD)",
+        new_subs="Subscribers",
+        date_format="%m/%d/%Y",
+        net="Net",
+    )
     res = import_csv(db, tenants["a"], (ROOT / "samples" / "revenue_infloww_style.csv").read_bytes(), m)
     assert res.imported == 3 and not res.errors
-    m2 = RevenueMapping(date="Date", creator="Creator", campaign="Campaign", gross="Gross", net="Net",
-                        new_subs="New Subs")
-    assert import_csv(db, tenants["a"], (ROOT / "samples" / "revenue_onlyfans_export.csv").read_bytes(), m2).imported == 5
+    m2 = RevenueMapping(
+        date="Date", creator="Creator", campaign="Campaign", gross="Gross", net="Net", new_subs="New Subs"
+    )
+    assert (
+        import_csv(
+            db, tenants["a"], (ROOT / "samples" / "revenue_onlyfans_export.csv").read_bytes(), m2
+        ).imported
+        == 5
+    )

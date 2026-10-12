@@ -20,8 +20,14 @@ from ..hashing import hash_field
 from ..settings import get_settings
 from .http import HttpClient
 
-EVENT_MAP = {"Lead": "SubmitForm", "CompleteRegistration": "CompleteRegistration", "Schedule": "Contact",
-             "PageView": "ViewContent", "Subscribe": "Subscribe", "Purchase": "CompletePayment"}
+EVENT_MAP = {
+    "Lead": "SubmitForm",
+    "CompleteRegistration": "CompleteRegistration",
+    "Schedule": "Contact",
+    "PageView": "ViewContent",
+    "Subscribe": "Subscribe",
+    "Purchase": "CompletePayment",
+}
 
 
 @dataclass
@@ -66,7 +72,9 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
     body = json.loads(request.content or b"{}")
     if not request.headers.get("Access-Token"):
         return httpx.Response(200, json={"code": 40001, "message": "Access token required"})
-    return httpx.Response(200, json={"code": 0, "message": "OK", "data": {"received": len(body.get("data", []))}})
+    return httpx.Response(
+        200, json={"code": 0, "message": "OK", "data": {"received": len(body.get("data", []))}}
+    )
 
 
 @dataclass
@@ -95,8 +103,12 @@ class TikTokClient:
         }
         if self.creds.test_event_code:
             body["test_event_code"] = self.creds.test_event_code
-        resp = self.http.request("POST", f"{self.base}/event/track/", json=body,
-                                 headers={"Access-Token": self.creds.access_token or "mock"})
+        resp = self.http.request(
+            "POST",
+            f"{self.base}/event/track/",
+            json=body,
+            headers={"Access-Token": self.creds.access_token or "mock"},
+        )
         data = dict(resp.json())
         if data.get("code") not in (0, None):
             from .http import IntegrationError

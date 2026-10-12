@@ -6,7 +6,6 @@ import json
 import random
 import sys
 import time
-
 from pathlib import Path
 from typing import Annotated
 
@@ -16,7 +15,9 @@ import yaml
 from . import __version__
 from .settings import get_settings
 
-app = typer.Typer(help="OFM Engine — tools for OnlyFans managers.", no_args_is_help=True, add_completion=False)
+app = typer.Typer(
+    help="OFM Engine — tools for OnlyFans managers.", no_args_is_help=True, add_completion=False
+)
 
 
 def _db_ready() -> None:
@@ -70,8 +71,11 @@ def init_client(
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
         cfg = TenantConfig(slug=slug, name=display).model_dump(exclude={"creators"})
-        path.write_text("# OFM Engine tenant config — NO SECRETS here (use Settings > Integrations or env).\n"
-                        + yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+        path.write_text(
+            "# OFM Engine tenant config — NO SECRETS here (use Settings > Integrations or env).\n"
+            + yaml.safe_dump(cfg, sort_keys=False),
+            encoding="utf-8",
+        )
         typer.echo(f"wrote {path}")
     _db_ready()
     with session_scope() as db:
@@ -83,8 +87,15 @@ def init_client(
                 typer.echo(f"user exists: {email}")
             else:
                 pw = secrets.token_urlsafe(14)
-                db.add(User(tenant_id=tenant.id, email=email, name="Admin", role="admin",
-                            password_hash=hash_password(pw)))
+                db.add(
+                    User(
+                        tenant_id=tenant.id,
+                        email=email,
+                        name="Admin",
+                        role="admin",
+                        password_hash=hash_password(pw),
+                    )
+                )
                 typer.echo(f"admin created: {email}  password: {pw}  (shown once — change it after login)")
 
 
@@ -115,7 +126,7 @@ def doctor() -> None:
                 ctx = load_context(db, tenant_id=t.id)
                 modes = ", ".join(f"{x['provider']}={x['mode']}" for x in status(ctx))
                 typer.echo(f"  [ok]    tenant {t.slug}: {modes}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         typer.echo(f"  [ERROR] database: {exc.__class__.__name__}: {exc}")
         ok = False
     typer.echo("doctor: OK" if ok else "doctor: problems found")
@@ -151,7 +162,7 @@ def seed_demo(
         typer.echo(f"  funnel: {get_settings().public_base_url}/apply/{slug}")
     if not stream:
         return
-    rng = random.Random()  # noqa: S311
+    rng = random.Random()
     n = 0
     typer.echo("streaming synthetic events (Ctrl+C to stop)")
     try:
@@ -172,7 +183,9 @@ def seed_demo(
 def import_revenue(
     csv_path: Annotated[Path, typer.Argument(exists=True, dir_okay=False, readable=True)],
     tenant: Annotated[str, typer.Option(help="tenant slug")] = "demo",
-    mapping: Annotated[str, typer.Option(help='JSON column mapping, e.g. {"date":"Date","gross":"Earnings"}')] = "{}",
+    mapping: Annotated[
+        str, typer.Option(help='JSON column mapping, e.g. {"date":"Date","gross":"Earnings"}')
+    ] = "{}",
 ) -> None:
     """Import a revenue CSV for a tenant."""
     from .db import session_scope
@@ -183,7 +196,9 @@ def import_revenue(
     _db_ready()
     with session_scope() as db:
         ctx = load_context(db, slug=tenant)
-        cfg = RevenueMapping.model_validate({**ctx.config.revenue_mapping.model_dump(), **json.loads(mapping)})
+        cfg = RevenueMapping.model_validate(
+            {**ctx.config.revenue_mapping.model_dump(), **json.loads(mapping)}
+        )
         try:
             res = import_csv(db, ctx.tenant_id, csv_path.read_bytes(), cfg, csv_path.name)
         except ImportError_ as exc:
@@ -252,8 +267,16 @@ def serve(
     """Run the HTTP server (uvicorn)."""
     import uvicorn  # pragma: no cover
 
-    uvicorn.run("ofm_engine.app:create_app", factory=True, host=host, port=port, reload=reload,  # pragma: no cover
-                workers=workers, proxy_headers=True, forwarded_allow_ips="127.0.0.1")
+    uvicorn.run(
+        "ofm_engine.app:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=reload,  # pragma: no cover
+        workers=workers,
+        proxy_headers=True,
+        forwarded_allow_ips="127.0.0.1",
+    )
 
 
 @app.command()
@@ -275,5 +298,3 @@ def main() -> None:  # pragma: no cover
 
 if __name__ == "__main__":  # pragma: no cover
     sys.exit(app())
-
-

@@ -38,11 +38,20 @@ def set_secret(db: Session, tenant: Tenant, name: str, value: str, actor_id: uui
     if not value or len(value) > 4096:
         raise ValueError("secret value must be 1..4096 chars")
     env = crypto.encrypt(value, tenant_id=str(tenant.id), name=name)
-    row = db.scalar(select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name))
+    row = db.scalar(
+        select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name)
+    )
     hint = value[-2:] if len(value) >= 12 else ""
     if row is None:
-        row = TenantSecret(tenant_id=tenant.id, name=name, wrapped_dek=env.wrapped_dek, nonce=env.nonce,
-                           ciphertext=env.ciphertext, hint=hint, updated_by=actor_id)
+        row = TenantSecret(
+            tenant_id=tenant.id,
+            name=name,
+            wrapped_dek=env.wrapped_dek,
+            nonce=env.nonce,
+            ciphertext=env.ciphertext,
+            hint=hint,
+            updated_by=actor_id,
+        )
         db.add(row)
     else:
         row.wrapped_dek, row.nonce, row.ciphertext = env.wrapped_dek, env.nonce, env.ciphertext
@@ -53,7 +62,9 @@ def set_secret(db: Session, tenant: Tenant, name: str, value: str, actor_id: uui
 
 def delete_secret(db: Session, tenant: Tenant, name: str) -> bool:
     _validate_name(name)
-    row = db.scalar(select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name))
+    row = db.scalar(
+        select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name)
+    )
     if row is None:
         return False
     db.delete(row)
@@ -63,7 +74,9 @@ def delete_secret(db: Session, tenant: Tenant, name: str) -> bool:
 
 def get_secret(db: Session, tenant: Tenant, name: str) -> str | None:
     _validate_name(name)
-    row = db.scalar(select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name))
+    row = db.scalar(
+        select(TenantSecret).where(TenantSecret.tenant_id == tenant.id, TenantSecret.name == name)
+    )
     if row is not None:
         return crypto.decrypt(
             crypto.Envelope(row.wrapped_dek, row.nonce, row.ciphertext), tenant_id=str(tenant.id), name=name

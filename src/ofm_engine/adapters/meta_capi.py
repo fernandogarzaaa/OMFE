@@ -31,12 +31,31 @@ from ..settings import get_settings
 from .http import HttpClient
 
 STANDARD_EVENTS = frozenset(
-    {"PageView", "ViewContent", "Lead", "CompleteRegistration", "Schedule", "Contact",
-     "SubmitApplication", "Subscribe", "Purchase", "StartTrial"}
+    {
+        "PageView",
+        "ViewContent",
+        "Lead",
+        "CompleteRegistration",
+        "Schedule",
+        "Contact",
+        "SubmitApplication",
+        "Subscribe",
+        "Purchase",
+        "StartTrial",
+    }
 )
 ACTION_SOURCES = frozenset(
-    {"website", "email", "app", "phone_call", "chat", "physical_store", "system_generated",
-     "business_messaging", "other"}
+    {
+        "website",
+        "email",
+        "app",
+        "phone_call",
+        "chat",
+        "physical_store",
+        "system_generated",
+        "business_messaging",
+        "other",
+    }
 )
 MAX_EVENT_AGE_SECONDS = 7 * 24 * 3600
 
@@ -126,7 +145,9 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
     if not data:
         return httpx.Response(400, json={"error": {"message": "data required", "code": 100}})
     trace = hashlib.sha256(request.content).hexdigest()[:12]
-    return httpx.Response(200, json={"events_received": len(data), "messages": [], "fbtrace_id": f"mock{trace}"})
+    return httpx.Response(
+        200, json={"events_received": len(data), "messages": [], "fbtrace_id": f"mock{trace}"}
+    )
 
 
 @dataclass
@@ -164,5 +185,7 @@ class MetaCapiClient:
         url = f"https://graph.facebook.com/{self.version}/{self.creds.pixel_id}"
         if self.mode == "mock":
             return {"id": self.creds.pixel_id or "mock_pixel", "mode": "mock"}
-        resp = self.http.request("GET", url, params={"fields": "id,name", "access_token": self.creds.access_token})
+        resp = self.http.request(
+            "GET", url, params={"fields": "id,name", "access_token": self.creds.access_token}
+        )
         return dict(resp.json())

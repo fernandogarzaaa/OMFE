@@ -35,15 +35,21 @@ def _aware(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def issue_tokens(db: Session, user: User, *, family_id: uuid.UUID | None = None, mfa: bool = False,
-                 user_agent: str = "") -> tuple[str, str, RefreshToken]:
+def issue_tokens(
+    db: Session, user: User, *, family_id: uuid.UUID | None = None, mfa: bool = False, user_agent: str = ""
+) -> tuple[str, str, RefreshToken]:
     s = get_settings()
-    access = tokens.create_access_token(user_id=user.id, tenant_id=user.tenant_id, role=user.role,
-                                        token_version=user.token_version, mfa=mfa)
+    access = tokens.create_access_token(
+        user_id=user.id, tenant_id=user.tenant_id, role=user.role, token_version=user.token_version, mfa=mfa
+    )
     raw, digest = tokens.new_refresh_token()
     rt = RefreshToken(
-        tenant_id=user.tenant_id, user_id=user.id, family_id=family_id or uuid.uuid4(), token_hash=digest,
-        expires_at=datetime.now(UTC) + timedelta(seconds=s.refresh_token_ttl_seconds), user_agent=user_agent[:200],
+        tenant_id=user.tenant_id,
+        user_id=user.id,
+        family_id=family_id or uuid.uuid4(),
+        token_hash=digest,
+        expires_at=datetime.now(UTC) + timedelta(seconds=s.refresh_token_ttl_seconds),
+        user_agent=user_agent[:200],
     )
     db.add(rt)
     db.flush()
@@ -56,7 +62,9 @@ def totp_secret(user: User) -> str | None:
     return crypto.decrypt_str(user.totp_secret_enc, tenant_id=str(user.tenant_id), name=f"totp:{user.id}")
 
 
-def login(db: Session, email: str, password: str, totp: str | None, *, ip: str = "", user_agent: str = "") -> Session_:
+def login(
+    db: Session, email: str, password: str, totp: str | None, *, ip: str = "", user_agent: str = ""
+) -> Session_:
     s = get_settings()
     now = datetime.now(UTC)
     user = db.scalar(select(User).where(User.email == email.strip().lower(), User.deleted_at.is_(None)))
@@ -75,7 +83,9 @@ def login(db: Session, email: str, password: str, totp: str | None, *, ip: str =
                 user.locked_until = now + timedelta(seconds=s.login_lockout_seconds)
                 user.failed_logins = 0
                 meta["locked"] = True
-            audit.record(db, tenant_id=user.tenant_id, actor_id=user.id, action="auth.login_failed", meta=meta, ip=ip)
+            audit.record(
+                db, tenant_id=user.tenant_id, actor_id=user.id, action="auth.login_failed", meta=meta, ip=ip
+            )
         raise AuthError("invalid_credentials", "invalid email or password")
     if user.totp_enabled:
         if not totp:
@@ -117,8 +127,14 @@ def refresh(db: Session, raw: str | None, *, ip: str = "", user_agent: str = "")
     if rt.revoked_at is not None:
         if rt.replaced_by is not None:  # reuse of a rotated token => likely theft
             revoke_family(db, rt.family_id)
-            audit.record(db, tenant_id=rt.tenant_id, actor_id=rt.user_id, action="auth.refresh_reuse_detected",
-                         meta={"family": str(rt.family_id)}, ip=ip)
+            audit.record(
+                db,
+                tenant_id=rt.tenant_id,
+                actor_id=rt.user_id,
+                action="auth.refresh_reuse_detected",
+                meta={"family": str(rt.family_id)},
+                ip=ip,
+            )
             raise AuthError("refresh_reused", "refresh token reuse detected; all sessions revoked")
         raise AuthError("unauthorized", "refresh token revoked")
     expires_at = _aware(rt.expires_at)
@@ -129,8 +145,9 @@ def refresh(db: Session, raw: str | None, *, ip: str = "", user_agent: str = "")
     if user is None or user.deleted_at is not None or not user.is_active:
         revoke_family(db, rt.family_id)
         raise AuthError("unauthorized", "user inactive")
-    access, new_raw, new_rt = issue_tokens(db, user, family_id=rt.family_id, mfa=user.totp_enabled,
-                                           user_agent=user_agent)
+    access, new_raw, new_rt = issue_tokens(
+        db, user, family_id=rt.family_id, mfa=user.totp_enabled, user_agent=user_agent
+    )
     rt.revoked_at = now
     rt.replaced_by = new_rt.id
     return Session_(user, access, new_raw)

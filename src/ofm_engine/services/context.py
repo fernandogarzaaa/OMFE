@@ -52,29 +52,40 @@ class TenantContext:
 
     # --- adapter factories ---------------------------------------------------------
     def ghl(self) -> GHLClient:
-        return GHLClient(GHLCredentials(token=self.secret("GHL_TOKEN"), location_id=self.config.ghl.location_id))
+        return GHLClient(
+            GHLCredentials(token=self.secret("GHL_TOKEN"), location_id=self.config.ghl.location_id)
+        )
 
     def meta(self) -> MetaCapiClient:
-        return MetaCapiClient(MetaCredentials(
-            pixel_id=self.config.meta.pixel_id, access_token=self.secret("META_CAPI_TOKEN"),
-            test_event_code=self.config.meta.test_event_code or None,
-        ))
+        return MetaCapiClient(
+            MetaCredentials(
+                pixel_id=self.config.meta.pixel_id,
+                access_token=self.secret("META_CAPI_TOKEN"),
+                test_event_code=self.config.meta.test_event_code or None,
+            )
+        )
 
     def tiktok(self) -> TikTokClient:
-        return TikTokClient(TikTokCredentials(
-            pixel_code=self.config.tiktok.pixel_code, access_token=self.secret("TIKTOK_ACCESS_TOKEN"),
-            test_event_code=self.config.tiktok.test_event_code or None,
-        ))
+        return TikTokClient(
+            TikTokCredentials(
+                pixel_code=self.config.tiktok.pixel_code,
+                access_token=self.secret("TIKTOK_ACCESS_TOKEN"),
+                test_event_code=self.config.tiktok.test_event_code or None,
+            )
+        )
 
     def llm(self) -> LLMClient:
         s = get_settings()
         provider = s.llm_provider
         if provider == "anthropic":
-            key = self.secret("ANTHROPIC_API_KEY") or (s.anthropic_api_key.get_secret_value()
-                                                     if s.anthropic_api_key else None)
+            key = self.secret("ANTHROPIC_API_KEY") or (
+                s.anthropic_api_key.get_secret_value() if s.anthropic_api_key else None
+            )
             return LLMClient(LLMConfig("anthropic", key, s.anthropic_model))
         if provider == "openai":
-            key = self.secret("OPENAI_API_KEY") or (s.openai_api_key.get_secret_value() if s.openai_api_key else None)
+            key = self.secret("OPENAI_API_KEY") or (
+                s.openai_api_key.get_secret_value() if s.openai_api_key else None
+            )
             return LLMClient(LLMConfig("openai", key, s.openai_model, s.openai_base_url))
         # auto-upgrade: a tenant that pasted a key gets live mode without touching env
         if key := self.secret("ANTHROPIC_API_KEY"):
@@ -84,8 +95,14 @@ class TenantContext:
         return LLMClient(LLMConfig("mock", None, "mock"))
 
     # --- integration call logging --------------------------------------------------
-    def call(self, adapter: str, operation: str, mode: str, fn: Callable[[], T], detail: dict[str, Any] | None = None
-             ) -> T:
+    def call(
+        self,
+        adapter: str,
+        operation: str,
+        mode: str,
+        fn: Callable[[], T],
+        detail: dict[str, Any] | None = None,
+    ) -> T:
         start = time.perf_counter()
         ok, status, err = True, None, None
         try:
@@ -97,14 +114,23 @@ class TenantContext:
             info = dict(detail or {})
             if err:
                 info["error"] = err
-            self.db.add(IntegrationLog(
-                tenant_id=self.tenant_id, adapter=adapter, operation=operation, mode=mode, ok=ok,
-                status_code=status, duration_ms=int((time.perf_counter() - start) * 1000),
-                detail=redact(info),
-            ))
+            self.db.add(
+                IntegrationLog(
+                    tenant_id=self.tenant_id,
+                    adapter=adapter,
+                    operation=operation,
+                    mode=mode,
+                    ok=ok,
+                    status_code=status,
+                    duration_ms=int((time.perf_counter() - start) * 1000),
+                    detail=redact(info),
+                )
+            )
 
 
-def load_context(db: Session, *, tenant_id: uuid.UUID | None = None, slug: str | None = None) -> TenantContext:
+def load_context(
+    db: Session, *, tenant_id: uuid.UUID | None = None, slug: str | None = None
+) -> TenantContext:
     stmt = select(Tenant).where(Tenant.active.is_(True))
     if tenant_id is not None:
         stmt = stmt.where(Tenant.id == tenant_id)

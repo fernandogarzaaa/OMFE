@@ -52,8 +52,10 @@ def test_apply_rate_limited(app, tenants, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_PUBLIC_PER_MIN", "3")
     reset_settings_cache()
     c = TestClient(create_app())
-    codes = [c.post("/api/v1/public/alpha/apply", json=apply_body(email=f"a{i}@example.net")).status_code
-             for i in range(5)]
+    codes = [
+        c.post("/api/v1/public/alpha/apply", json=apply_body(email=f"a{i}@example.net")).status_code
+        for i in range(5)
+    ]
     assert codes[:3] == [201, 201, 201] and codes[3] == 429
     assert c.post("/api/v1/public/alpha/apply", json=apply_body()).json()["error"]["code"] == "rate_limited"
 
@@ -62,7 +64,8 @@ def test_funnel_page_variants(client, tenants, tmp_path):
     (tmp_path / "clients").mkdir(exist_ok=True)
     (tmp_path / "clients" / "alpha.yaml").write_text(
         "slug: alpha\nname: Alpha Agency\nmeta:\n  pixel_id: '1234567890'\nfunnel:\n  variants:\n"
-        "    - {key: A, headline: Headline Alpha}\n    - {key: B, headline: Headline Bravo}\n")
+        "    - {key: A, headline: Headline Alpha}\n    - {key: B, headline: Headline Bravo}\n"
+    )
     r = client.get("/apply/alpha?v=B&utm_source=ig")
     assert r.status_code == 200
     html = r.text
@@ -79,8 +82,16 @@ def test_funnel_page_variants(client, tenants, tmp_path):
 
 
 def test_funnel_form_post_fallback(client, admin_a):
-    form = {"name": "Form Person", "email": "form@example.net", "age_confirmed": "true", "consent": "true",
-            "earnings_range": "1k-5k", "instagram": "@f", "instagram_followers": "2500", "attr_utm_source": "x"}
+    form = {
+        "name": "Form Person",
+        "email": "form@example.net",
+        "age_confirmed": "true",
+        "consent": "true",
+        "earnings_range": "1k-5k",
+        "instagram": "@f",
+        "instagram_followers": "2500",
+        "attr_utm_source": "x",
+    }
     r = client.post("/apply/alpha", data=form)
     assert r.status_code == 200 and "Thank you" in r.text
     leads = admin_a.get("/api/v1/leads").json()["items"]
@@ -92,8 +103,12 @@ def test_funnel_form_post_fallback(client, admin_a):
 
 
 def _link(admin, **kw):
-    body = {"channel": "instagram", "destination_url": "https://example.com/landing?x=1", "campaign": "spring",
-            "slug": "spring-ig"}
+    body = {
+        "channel": "instagram",
+        "destination_url": "https://example.com/landing?x=1",
+        "campaign": "spring",
+        "slug": "spring-ig",
+    }
     body.update(kw)
     r = admin.post("/api/v1/links", json=body)
     assert r.status_code == 201, r.text
@@ -106,8 +121,10 @@ UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.1
 def test_redirect_captures_attribution(app, admin_a, db):
     _link(admin_a)
     c = TestClient(app, follow_redirects=False)
-    r = c.get("/l/spring-ig?utm_medium=bio&fbclid=ABC123&ttclid=TT9", headers={"user-agent": UA,
-                                                                              "referer": "https://instagram.com/x"})
+    r = c.get(
+        "/l/spring-ig?utm_medium=bio&fbclid=ABC123&ttclid=TT9",
+        headers={"user-agent": UA, "referer": "https://instagram.com/x"},
+    )
     assert r.status_code == 302
     loc = r.headers["location"]
     assert loc.startswith("https://example.com/landing?") and "x=1" in loc and "utm_source=instagram" in loc
@@ -134,7 +151,9 @@ def test_redirect_bot_not_counted(app, admin_a):
 
 def test_redirect_pixel_interstitial_shares_event_id(app, admin_a, db, tmp_path):
     (tmp_path / "clients").mkdir(exist_ok=True)
-    (tmp_path / "clients" / "alpha.yaml").write_text("slug: alpha\nname: Alpha\nmeta:\n  pixel_id: '99887766'\n")
+    (tmp_path / "clients" / "alpha.yaml").write_text(
+        "slug: alpha\nname: Alpha\nmeta:\n  pixel_id: '99887766'\n"
+    )
     _link(admin_a, slug="recruit", capi_on_click=True)
     c = TestClient(app, follow_redirects=False)
     r = c.get("/l/recruit", headers={"user-agent": UA})
@@ -154,27 +173,51 @@ def test_inactive_link_404(app, admin_a):
 
 
 def test_link_validation(admin_a):
-    assert admin_a.post("/api/v1/links", json={"channel": "x", "destination_url": "javascript:alert(1)",
-                                               "campaign": "c"}).status_code == 422
+    assert (
+        admin_a.post(
+            "/api/v1/links", json={"channel": "x", "destination_url": "javascript:alert(1)", "campaign": "c"}
+        ).status_code
+        == 422
+    )
     _link(admin_a)
-    assert admin_a.post("/api/v1/links", json={"channel": "x", "destination_url": "https://e.com",
-                                               "campaign": "c", "slug": "spring-ig"}).status_code == 409
-    auto = admin_a.post("/api/v1/links", json={"channel": "x", "destination_url": "https://e.com",
-                                               "campaign": "c"}).json()
+    assert (
+        admin_a.post(
+            "/api/v1/links",
+            json={"channel": "x", "destination_url": "https://e.com", "campaign": "c", "slug": "spring-ig"},
+        ).status_code
+        == 409
+    )
+    auto = admin_a.post(
+        "/api/v1/links", json={"channel": "x", "destination_url": "https://e.com", "campaign": "c"}
+    ).json()
     assert len(auto["slug"]) >= 6
-    r = admin_a.patch(f"/api/v1/links/{auto['id']}", json={"destination_url": "https://new.example",
-                                                           "channel": "TikTok"})
+    r = admin_a.patch(
+        f"/api/v1/links/{auto['id']}", json={"destination_url": "https://new.example", "channel": "TikTok"}
+    )
     assert r.json()["channel"] == "tiktok"
-    assert admin_a.patch(f"/api/v1/links/{auto['id']}", json={"destination_url": "ftp://x"}).status_code == 422
+    assert (
+        admin_a.patch(f"/api/v1/links/{auto['id']}", json={"destination_url": "ftp://x"}).status_code == 422
+    )
 
 
 def test_link_in_bio(client, admin_a):
-    admin_a.post("/api/v1/creators", json={"name": "Mia Rose", "handle": "miarose", "status": "active",
-                                           "bio": "Fitness & travel",
-                                           "bio_links": [{"label": "My page", "url": "/l/spring-ig"}]})
+    admin_a.post(
+        "/api/v1/creators",
+        json={
+            "name": "Mia Rose",
+            "handle": "miarose",
+            "status": "active",
+            "bio": "Fitness & travel",
+            "bio_links": [{"label": "My page", "url": "/l/spring-ig"}],
+        },
+    )
     r = client.get("/c/alpha/miarose")
     assert r.status_code == 200 and "Mia Rose" in r.text and 'href="/l/spring-ig"' in r.text
     assert client.get("/c/alpha/nobody").status_code == 404
-    assert admin_a.post("/api/v1/creators", json={"name": "B", "handle": "bb",
-                                                  "bio_links": [{"label": "x", "url": "javascript:1"}]}
-                        ).status_code == 422
+    assert (
+        admin_a.post(
+            "/api/v1/creators",
+            json={"name": "B", "handle": "bb", "bio_links": [{"label": "x", "url": "javascript:1"}]},
+        ).status_code
+        == 422
+    )

@@ -105,7 +105,9 @@ def test_totp_flow(app, tenants):
     anon = TestClient(app)
     r = anon.post("/api/v1/auth/login", json={"email": "admin@alpha.test", "password": PASSWORD})
     assert r.status_code == 401 and r.json()["error"]["code"] == "totp_required"
-    r = anon.post("/api/v1/auth/login", json={"email": "admin@alpha.test", "password": PASSWORD, "totp": "123456"})
+    r = anon.post(
+        "/api/v1/auth/login", json={"email": "admin@alpha.test", "password": PASSWORD, "totp": "123456"}
+    )
     assert r.json()["error"]["code"] == "invalid_totp"
     login(app, "admin@alpha.test", totp=pyotp.TOTP(secret).now())
 

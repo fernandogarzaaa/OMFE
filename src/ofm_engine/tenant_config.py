@@ -60,13 +60,20 @@ class Variant(BaseModel):
 class FunnelCopy(BaseModel):
     variants: list[Variant] = Field(
         default_factory=lambda: [
-            Variant(key="A", headline="Grow your creator business with a team that's all-in",
-                    subhead="Management, marketing and strategy so you can focus on creating."),
+            Variant(
+                key="A",
+                headline="Grow your creator business with a team that's all-in",
+                subhead="Management, marketing and strategy so you can focus on creating.",
+            ),
         ]
     )
     cta: str = "Apply in 60 seconds"
-    benefits: list[str] = Field(default_factory=lambda: ["Dedicated manager", "Growth strategy", "Transparent splits"])
-    earnings_ranges: list[str] = Field(default_factory=lambda: ["none", "0-1k", "1k-5k", "5k-10k", "10k-25k", "25k+"])
+    benefits: list[str] = Field(
+        default_factory=lambda: ["Dedicated manager", "Growth strategy", "Transparent splits"]
+    )
+    earnings_ranges: list[str] = Field(
+        default_factory=lambda: ["none", "0-1k", "1k-5k", "5k-10k", "10k-25k", "25k+"]
+    )
     thank_you: str = "Thanks! Grab a time below for a quick intro call."
     booking_url: str = ""
     consent_text: str = (
@@ -151,7 +158,16 @@ class TenantConfig(BaseModel):
 
 
 # Fields admins may edit from the UI (everything else stays in YAML / code review)
-EDITABLE_OVERRIDE_KEYS = {"brand", "funnel", "ghl", "meta", "tiktok", "features", "scoring", "target_timezones"}
+EDITABLE_OVERRIDE_KEYS = {
+    "brand",
+    "funnel",
+    "ghl",
+    "meta",
+    "tiktok",
+    "features",
+    "scoring",
+    "target_timezones",
+}
 
 
 def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

@@ -123,10 +123,15 @@ def referrer_host(referrer: str | None) -> str:
 
 
 def extract_click_context(
-    query: Mapping[str, str], cookies: Mapping[str, str], user_agent: str, referrer: str | None,
+    query: Mapping[str, str],
+    cookies: Mapping[str, str],
+    user_agent: str,
+    referrer: str | None,
     now_ms: int | None = None,
 ) -> ClickContext:
-    ctx = ClickContext(**{k: clean_param(query.get(k), 120) for k in UTM_KEYS})
+    ctx = ClickContext()
+    for k in UTM_KEYS:
+        setattr(ctx, k, clean_param(query.get(k), 120))
     ctx.fbclid = clean_param(query.get("fbclid"))
     ctx.ttclid = clean_param(query.get("ttclid"))
     cookie_fbc = cookies.get("_fbc", "")

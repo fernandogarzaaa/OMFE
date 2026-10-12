@@ -40,10 +40,18 @@ def me_payload(db: Session, user: User) -> dict[str, Any]:
 
 
 @router.post("/login")
-def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, Any]:
+def login(
+    body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     try:
-        sess = auth_svc.login(db, body.email, body.password, body.totp, ip=client_ip(request),
-                              user_agent=request.headers.get("user-agent", ""))
+        sess = auth_svc.login(
+            db,
+            body.email,
+            body.password,
+            body.totp,
+            ip=client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+        )
     except auth_svc.AuthError as exc:
         db.commit()  # persist failed-attempt counters / lockout / audit before erroring
         raise ApiError(401, exc.code, exc.message) from exc
@@ -55,8 +63,12 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
 def refresh(request: Request, response: Response, db: Session = Depends(get_db)) -> Any:
     check_csrf(request)
     try:
-        sess = auth_svc.refresh(db, request.cookies.get(tokens.REFRESH_COOKIE), ip=client_ip(request),
-                                user_agent=request.headers.get("user-agent", ""))
+        sess = auth_svc.refresh(
+            db,
+            request.cookies.get(tokens.REFRESH_COOKIE),
+            ip=client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+        )
     except auth_svc.AuthError as exc:
         db.commit()  # family revocation on reuse must survive the error response
         err = JSONResponse(error_body(exc.code, exc.message), status_code=401)
@@ -89,14 +101,20 @@ def totp_setup(user: User = Depends(get_current_user), db: Session = Depends(get
 
 
 @router.post("/totp/verify")
-def totp_verify(body: TotpIn, response: Response, request: Request, user: User = Depends(get_current_user),
-                db: Session = Depends(get_db)) -> dict[str, Any]:
+def totp_verify(
+    body: TotpIn,
+    response: Response,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     try:
         auth_svc.totp_verify(db, user, body.code)
     except auth_svc.AuthError as exc:
         raise ApiError(_status_for(exc.code), exc.code, exc.message) from exc
     # token_version was bumped; re-issue this session's tokens so the caller stays logged in
-    access, refresh_raw, _ = auth_svc.issue_tokens(db, user, mfa=True,
-                                                   user_agent=request.headers.get("user-agent", ""))
+    access, refresh_raw, _ = auth_svc.issue_tokens(
+        db, user, mfa=True, user_agent=request.headers.get("user-agent", "")
+    )
     set_session_cookies(response, access, refresh_raw)
     return {"ok": True, "totp_enabled": True}

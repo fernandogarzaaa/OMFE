@@ -401,7 +401,9 @@ class InboundWebhook(Base):
     __tablename__ = "inbound_webhooks"
     __table_args__ = (UniqueConstraint("source", "dedupe_key", name="uq_inbound_dedupe"),)
     id: Mapped[uuid.UUID] = _pk()
-    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), index=True
+    )
     source: Mapped[str] = mapped_column(String(16), nullable=False)
     dedupe_key: Mapped[str] = mapped_column(String(128), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), default="", nullable=False)

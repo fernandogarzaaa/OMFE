@@ -25,7 +25,14 @@ def record(
     ip: str | None = None,
 ) -> None:
     ip_hash = keyed_hash(ip, get_settings().pii_hash_salt.get_secret_value()) if ip else ""
-    db.add(AuditLog(
-        tenant_id=tenant_id, actor_id=actor_id, actor_type=actor_type, action=action, target=target[:200],
-        meta=redact(meta or {}), ip_hash=ip_hash,
-    ))
+    db.add(
+        AuditLog(
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_type=actor_type,
+            action=action,
+            target=target[:200],
+            meta=redact(meta or {}),
+            ip_hash=ip_hash,
+        )
+    )

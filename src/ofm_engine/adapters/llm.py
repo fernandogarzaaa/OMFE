@@ -41,8 +41,9 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
     body = json.loads(request.content or b"{}")
     if request.url.path.endswith("/messages"):
         prompt = body.get("messages", [{}])[-1].get("content", "")
-        return httpx.Response(200, json={"content": [{"type": "text", "text": _mock_text(body.get("system", ""),
-                                                                                         prompt)}]})
+        return httpx.Response(
+            200, json={"content": [{"type": "text", "text": _mock_text(body.get("system", ""), prompt)}]}
+        )
     msgs = body.get("messages", [])
     system = next((m["content"] for m in msgs if m.get("role") == "system"), "")
     prompt = msgs[-1].get("content", "") if msgs else ""
@@ -58,19 +59,28 @@ class LLMClient:
     def complete(self, system: str, prompt: str, max_tokens: int = 800) -> str:
         if self.cfg.provider == "anthropic" or (self.mode == "mock" and self.cfg.provider != "openai"):
             resp = self.http.request(
-                "POST", "https://api.anthropic.com/v1/messages",
+                "POST",
+                "https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": self.cfg.api_key or "mock", "anthropic-version": "2023-06-01"},
-                json={"model": self.cfg.model, "max_tokens": max_tokens, "system": system,
-                      "messages": [{"role": "user", "content": prompt}]},
+                json={
+                    "model": self.cfg.model,
+                    "max_tokens": max_tokens,
+                    "system": system,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
             )
             data: dict[str, Any] = resp.json()
             return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
         base = (self.cfg.base_url or get_settings().openai_base_url).rstrip("/")
         resp = self.http.request(
-            "POST", f"{base}/chat/completions",
+            "POST",
+            f"{base}/chat/completions",
             headers={"Authorization": f"Bearer {self.cfg.api_key or 'mock'}"},
-            json={"model": self.cfg.model, "max_tokens": max_tokens,
-                  "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]},
+            json={
+                "model": self.cfg.model,
+                "max_tokens": max_tokens,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            },
         )
         data = resp.json()
         return str(data["choices"][0]["message"]["content"])

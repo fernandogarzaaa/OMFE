@@ -87,7 +87,7 @@ def test_permanent_error_goes_dead(db, tenants, monkeypatch):
         raise jobs.PermanentJobError("bad payload")
 
     monkeypatch.setitem(jobs.HANDLERS, "alert.send", bad)
-    job = jobs.enqueue(db, tenants["a"], "alert.send", {}, "perm")
+    jobs.enqueue(db, tenants["a"], "alert.send", {}, "perm")
     db.commit()
     assert jobs.run_job(jobs.claim(db, 10)[0]) == "dead"
 
@@ -95,7 +95,9 @@ def test_permanent_error_goes_dead(db, tenants, monkeypatch):
 def test_retry_endpoint(admin_a, db, tenants, monkeypatch):
     from ofm_engine.services import jobs
 
-    monkeypatch.setitem(jobs.HANDLERS, "alert.send", lambda c, j: (_ for _ in ()).throw(jobs.PermanentJobError("x")))
+    monkeypatch.setitem(
+        jobs.HANDLERS, "alert.send", lambda c, j: (_ for _ in ()).throw(jobs.PermanentJobError("x"))
+    )
     job = jobs.enqueue(db, tenants["a"], "alert.send", {}, "retry-me")
     db.commit()
     jobs.drain()
@@ -128,8 +130,10 @@ def test_webhook_delivery_signed_live(admin_a, client, db, monkeypatch):
     from ofm_engine.services import jobs
     from ofm_engine.settings import reset_settings_cache
 
-    sub = admin_a.post("/api/v1/automations/webhooks",
-                       json={"url": "https://hooks.slack.com/services/T/B/x", "events": ["lead.created"]}).json()
+    sub = admin_a.post(
+        "/api/v1/automations/webhooks",
+        json={"url": "https://hooks.slack.com/services/T/B/x", "events": ["lead.created"]},
+    ).json()
     secret = sub["secret"]
     assert secret.startswith("whsec_")
     assert "secret" not in admin_a.get("/api/v1/automations/webhooks").json()["items"][0]
@@ -152,7 +156,9 @@ def test_webhook_delivery_failure_retries(admin_a, client, db, monkeypatch):
     from ofm_engine.services import jobs
     from ofm_engine.settings import reset_settings_cache
 
-    admin_a.post("/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/services/z", "events": ["*"]})
+    admin_a.post(
+        "/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/services/z", "events": ["*"]}
+    )
     monkeypatch.setenv("OUTBOUND_WEBHOOKS_LIVE", "true")
     reset_settings_cache()
     client.post("/api/v1/public/alpha/apply", json=apply_body())
@@ -165,8 +171,9 @@ def test_webhook_delivery_failure_retries(admin_a, client, db, monkeypatch):
 def test_webhook_mock_mode_and_delete(admin_a, client, db):
     from ofm_engine.services import jobs
 
-    sub = admin_a.post("/api/v1/automations/webhooks",
-                       json={"url": "https://hooks.slack.com/services/m", "events": ["*"]}).json()
+    sub = admin_a.post(
+        "/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/services/m", "events": ["*"]}
+    ).json()
     client.post("/api/v1/public/alpha/apply", json=apply_body())
     jobs.drain()
     assert _jobs(db, "webhook.deliver")[0].status == "succeeded"
@@ -175,29 +182,43 @@ def test_webhook_mock_mode_and_delete(admin_a, client, db):
 
 
 def test_webhook_create_rejects_unsafe(admin_a):
-    for url in ("http://hooks.slack.com/x", "https://127.0.0.1/x", "https://user:pw@hooks.slack.com/x",
-                "https://localhost/x"):
+    for url in (
+        "http://hooks.slack.com/x",
+        "https://127.0.0.1/x",
+        "https://user:pw@hooks.slack.com/x",
+        "https://localhost/x",
+    ):
         r = admin_a.post("/api/v1/automations/webhooks", json={"url": url, "events": ["*"]})
         assert r.status_code == 422, url
-    r = admin_a.post("/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/x", "events": ["bogus"]})
+    r = admin_a.post(
+        "/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/x", "events": ["bogus"]}
+    )
     assert r.status_code == 422
 
 
 def test_ghl_live_mode_with_respx(admin_a, client, db):
     from ofm_engine.services import jobs
 
-    admin_a.put("/api/v1/integrations/ghl", json={"fields": {"token": "pit-live-token-123456", "location_id": "LOC1"}})
+    admin_a.put(
+        "/api/v1/integrations/ghl", json={"fields": {"token": "pit-live-token-123456", "location_id": "LOC1"}}
+    )
     client.post("/api/v1/public/alpha/apply", json=apply_body())
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as rx:
         rx.post("https://services.leadconnectorhq.com/contacts/upsert").mock(
-            return_value=httpx.Response(200, json={"new": True, "contact": {"id": "C1"}}))
-        rx.post("https://services.leadconnectorhq.com/contacts/C1/tags").mock(return_value=httpx.Response(201, json={}))
+            return_value=httpx.Response(200, json={"new": True, "contact": {"id": "C1"}})
+        )
+        rx.post("https://services.leadconnectorhq.com/contacts/C1/tags").mock(
+            return_value=httpx.Response(201, json={})
+        )
         rx.post("https://services.leadconnectorhq.com/contacts/C1/notes").mock(
-            return_value=httpx.Response(201, json={"note": {"id": "N1"}}))
+            return_value=httpx.Response(201, json={"note": {"id": "N1"}})
+        )
         opp = rx.post("https://services.leadconnectorhq.com/opportunities/").mock(
-            return_value=httpx.Response(201, json={"opportunity": {"id": "O1"}}))
+            return_value=httpx.Response(201, json={"opportunity": {"id": "O1"}})
+        )
         rx.post(url__regex=r"https://graph\.facebook\.com/.*").mock(
-            return_value=httpx.Response(200, json={"events_received": 1}))
+            return_value=httpx.Response(200, json={"events_received": 1})
+        )
         jobs.drain()
         upsert = rx.calls[0].request
     assert upsert.headers["Authorization"] == "Bearer pit-live-token-123456"
@@ -212,11 +233,14 @@ def test_ghl_live_mode_with_respx(admin_a, client, db):
 def test_ghl_4xx_is_permanent(admin_a, client, db):
     from ofm_engine.services import jobs
 
-    admin_a.put("/api/v1/integrations/ghl", json={"fields": {"token": "pit-live-token-123456", "location_id": "LOC1"}})
+    admin_a.put(
+        "/api/v1/integrations/ghl", json={"fields": {"token": "pit-live-token-123456", "location_id": "LOC1"}}
+    )
     client.post("/api/v1/public/alpha/apply", json=apply_body())
     with respx.mock(assert_all_mocked=True, assert_all_called=False) as rx:
         rx.post("https://services.leadconnectorhq.com/contacts/upsert").mock(
-            return_value=httpx.Response(401, json={"message": "Invalid JWT"}))
+            return_value=httpx.Response(401, json={"message": "Invalid JWT"})
+        )
         rx.post(url__regex=r"https://graph\.facebook\.com/.*").mock(return_value=httpx.Response(200, json={}))
         jobs.drain()
     assert _jobs(db, "ghl.upsert_lead")[0].status == "dead"

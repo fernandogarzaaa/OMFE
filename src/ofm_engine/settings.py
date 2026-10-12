@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Annotated
 from pathlib import Path
+from typing import Annotated
 
 from dotenv import load_dotenv
 from pydantic import Field, SecretStr, field_validator
@@ -20,7 +20,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 load_dotenv(override=False)
 
 DEV_JWT_SECRET = "dev-insecure-jwt-secret-change-me-0123456789"  # noqa: S105 - dev only, refused in prod
-DEV_MASTER_KEY = "ZGV2LW9ubHktbWFzdGVyLWtleS1jaGFuZ2UtbWUtISE="  # noqa: S105 - dev only, refused in prod
+DEV_MASTER_KEY = "ZGV2LW9ubHktbWFzdGVyLWtleS1jaGFuZ2UtbWUtISE="
 
 
 class Settings(BaseSettings):
@@ -63,7 +63,9 @@ class Settings(BaseSettings):
     login_lockout_seconds: int = 900
     webhook_tolerance_seconds: int = 300
     allow_unsigned_ghl_webhooks_in_mock: bool = True
-    outbound_allowed_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)  # extra hosts for user webhooks
+    outbound_allowed_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
+    )  # extra hosts for user webhooks
     outbound_allow_private: bool = False  # never enable in production
     outbound_webhooks_live: bool = False  # mock by default: deliveries are signed + logged, not sent
     bootstrap_admin_email: str | None = None
@@ -114,7 +116,10 @@ class Settings(BaseSettings):
     def production_problems(self) -> list[str]:
         """Return a list of unsafe settings. Production boot refuses to start if any."""
         problems: list[str] = []
-        if self.jwt_secret.get_secret_value() == DEV_JWT_SECRET or len(self.jwt_secret.get_secret_value()) < 32:
+        if (
+            self.jwt_secret.get_secret_value() == DEV_JWT_SECRET
+            or len(self.jwt_secret.get_secret_value()) < 32
+        ):
             problems.append("JWT_SECRET must be set to a random value of 32+ chars")
         if DEV_MASTER_KEY in self.master_keys.get_secret_value():
             problems.append("MASTER_KEYS must be set (generate with `ofm gen-key`)")

@@ -42,15 +42,21 @@ def test_seeded_demo_login_and_kpis():
 
     assert runner.invoke(cli_app, ["seed-demo", "--admin-password", "Known-Passw0rd-123"]).exit_code == 0
     c = TestClient(create_app())
-    assert c.post("/api/v1/auth/login", json={"email": "admin@example.com", "password": "Known-Passw0rd-123"}
-                  ).status_code == 200
+    assert (
+        c.post(
+            "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Known-Passw0rd-123"}
+        ).status_code
+        == 200
+    )
     k = c.get("/api/v1/kpis?range=30d").json()
     assert k["clicks"] > 0 and k["revenue_cents"] > 0 and k["leads"] > 0 and k["by_creator"]
     assert c.get("/apply/demo").status_code == 200
 
 
 def test_init_client():
-    r = runner.invoke(cli_app, ["init-client", "acme-agency", "--name", "Acme", "--admin-email", "boss@acme.example"])
+    r = runner.invoke(
+        cli_app, ["init-client", "acme-agency", "--name", "Acme", "--admin-email", "boss@acme.example"]
+    )
     assert r.exit_code == 0, r.output
     assert "admin created: boss@acme.example  password:" in r.output
     from ofm_engine.settings import get_settings
@@ -97,8 +103,14 @@ def test_doctor_reports_db_failure(monkeypatch):
 
 def _alembic(args, url):
     env = {**os.environ, "DATABASE_URL": url}
-    return subprocess.run([sys.executable, "-m", "alembic", *args], cwd=ROOT, env=env, capture_output=True,
-                          text=True, timeout=120)
+    return subprocess.run(
+        [sys.executable, "-m", "alembic", *args],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
 
 
 def test_migrations_no_drift_sqlite(tmp_path):
@@ -122,7 +134,7 @@ def test_migration_matches_models_tables():
     from ofm_engine.models import Base
 
     text = (ROOT / "alembic" / "versions" / "0001_initial_schema.py").read_text()
-    assert set(re.findall(r"op\.create_table\('(\w+)'", text)) == set(Base.metadata.tables)
+    assert set(re.findall(r"op\.create_table\(\s*['\"](\w+)['\"]", text)) == set(Base.metadata.tables)
 
 
 def test_cli_migrate_command(tmp_path, monkeypatch):

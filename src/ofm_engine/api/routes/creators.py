@@ -65,16 +65,26 @@ class CreatorPatch(BaseModel):
 
 
 def get_creator(db: Session, p: Principal, creator_id: str) -> Creator:
-    c = db.scalar(select(Creator).where(Creator.tenant_id == p.tenant_id, Creator.id == parse_uuid(creator_id, "creator"),
-                                        Creator.deleted_at.is_(None)))
+    c = db.scalar(
+        select(Creator).where(
+            Creator.tenant_id == p.tenant_id,
+            Creator.id == parse_uuid(creator_id, "creator"),
+            Creator.deleted_at.is_(None),
+        )
+    )
     if c is None:
         raise not_found("creator")
     return c
 
 
 @router.get("")
-def list_creators(limit: int = 50, cursor: str | None = None, status: Status | None = None,
-                  p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def list_creators(
+    limit: int = 50,
+    cursor: str | None = None,
+    status: Status | None = None,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     stmt = select(Creator).where(Creator.tenant_id == p.tenant_id, Creator.deleted_at.is_(None))
     if status:
         stmt = stmt.where(Creator.status == status)
@@ -82,28 +92,50 @@ def list_creators(limit: int = 50, cursor: str | None = None, status: Status | N
 
 
 @router.post("", status_code=201)
-def create_creator(body: CreatorIn, request: Request, p: Principal = Depends(require_member),
-                   db: Session = Depends(get_db)) -> dict[str, Any]:
+def create_creator(
+    body: CreatorIn, request: Request, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     if db.scalar(select(Creator).where(Creator.tenant_id == p.tenant_id, Creator.slug == body.handle)):
         raise ApiError(409, "handle_taken", "a creator with this handle already exists")
-    c = Creator(tenant_id=p.tenant_id, slug=body.handle, display_name=body.name, status=body.status,
-                channels=[ch.strip().lower()[:32] for ch in body.channels if ch.strip()], bio=body.bio,
-                avatar_url=body.avatar_url, bio_links=[b.model_dump() for b in body.bio_links])
+    c = Creator(
+        tenant_id=p.tenant_id,
+        slug=body.handle,
+        display_name=body.name,
+        status=body.status,
+        channels=[ch.strip().lower()[:32] for ch in body.channels if ch.strip()],
+        bio=body.bio,
+        avatar_url=body.avatar_url,
+        bio_links=[b.model_dump() for b in body.bio_links],
+    )
     db.add(c)
     db.flush()
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="creator.create",
-                 target=str(c.id), ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="creator.create",
+        target=str(c.id),
+        ip=client_ip(request),
+    )
     return creator_out(c)
 
 
 @router.get("/{creator_id}")
-def read_creator(creator_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
+def read_creator(
+    creator_id: str, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     return creator_out(get_creator(db, p, creator_id))
 
 
 @router.patch("/{creator_id}")
-def patch_creator(creator_id: str, body: CreatorPatch, request: Request, p: Principal = Depends(require_member),
-                  db: Session = Depends(get_db)) -> dict[str, Any]:
+def patch_creator(
+    creator_id: str,
+    body: CreatorPatch,
+    request: Request,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     c = get_creator(db, p, creator_id)
     data = body.model_dump(exclude_none=True)
     if "name" in data:
@@ -115,17 +147,32 @@ def patch_creator(creator_id: str, body: CreatorPatch, request: Request, p: Prin
         c.channels = [ch.strip().lower()[:32] for ch in data["channels"] if ch.strip()]
     if "bio_links" in data:
         c.bio_links = data["bio_links"]
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="creator.update",
-                 target=str(c.id), meta={"fields": sorted(data)}, ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="creator.update",
+        target=str(c.id),
+        meta={"fields": sorted(data)},
+        ip=client_ip(request),
+    )
     return creator_out(c)
 
 
 @router.delete("/{creator_id}")
-def delete_creator(creator_id: str, request: Request, p: Principal = Depends(require_admin),
-                   db: Session = Depends(get_db)) -> dict[str, Any]:
+def delete_creator(
+    creator_id: str, request: Request, p: Principal = Depends(require_admin), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     c = get_creator(db, p, creator_id)
     c.deleted_at = utcnow()
     c.slug = f"{c.slug[:40]}-deleted-{c.id.hex[:8]}"
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, action="creator.delete", target=str(c.id),
-                 ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        action="creator.delete",
+        target=str(c.id),
+        ip=client_ip(request),
+    )
     return {"ok": True}

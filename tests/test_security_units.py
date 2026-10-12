@@ -107,8 +107,23 @@ def test_webhook_signature_and_replay_window():
 
 
 # --------------------------------------------------------------------------- SSRF
-@pytest.mark.parametrize("ip", ["127.0.0.1", "10.0.0.5", "192.168.1.1", "172.16.0.1", "169.254.169.254",
-                                "100.64.0.1", "::1", "fd00::1", "0.0.0.0", "::ffff:127.0.0.1", "224.0.0.1", "nope"])
+@pytest.mark.parametrize(
+    "ip",
+    [
+        "127.0.0.1",
+        "10.0.0.5",
+        "192.168.1.1",
+        "172.16.0.1",
+        "169.254.169.254",
+        "100.64.0.1",
+        "::1",
+        "fd00::1",
+        "0.0.0.0",
+        "::ffff:127.0.0.1",
+        "224.0.0.1",
+        "nope",
+    ],
+)
 def test_ssrf_blocks_private(ip):
     assert ssrf.is_public_ip(ip) is False
 
@@ -159,21 +174,46 @@ def test_access_token_roundtrip_and_rejections():
     t = tokens.create_access_token(user_id=uid, tenant_id=tid, role="admin", token_version=3, mfa=True)
     c = tokens.decode_access_token(t)
     assert (c.user_id, c.tenant_id, c.role, c.token_version, c.mfa) == (uid, tid, "admin", 3, True)
-    expired = tokens.create_access_token(user_id=uid, tenant_id=tid, role="admin", token_version=0,
-                                         now=datetime.now(UTC) - timedelta(hours=1))
+    expired = tokens.create_access_token(
+        user_id=uid, tenant_id=tid, role="admin", token_version=0, now=datetime.now(UTC) - timedelta(hours=1)
+    )
     with pytest.raises(tokens.TokenError):
         tokens.decode_access_token(expired)
-    none_alg = jwt.encode({"sub": str(uid), "tid": str(tid), "role": "admin", "typ": "access"}, None, algorithm="none")
+    none_alg = jwt.encode(
+        {"sub": str(uid), "tid": str(tid), "role": "admin", "typ": "access"}, None, algorithm="none"
+    )
     with pytest.raises(tokens.TokenError):
         tokens.decode_access_token(none_alg)
     s = get_settings()
     now = int(time.time())
-    wrong_role = jwt.encode({"sub": str(uid), "tid": str(tid), "role": "root", "typ": "access", "iss": s.jwt_issuer,
-                             "iat": now, "exp": now + 60}, s.jwt_secret.get_secret_value(), algorithm="HS256")
+    wrong_role = jwt.encode(
+        {
+            "sub": str(uid),
+            "tid": str(tid),
+            "role": "root",
+            "typ": "access",
+            "iss": s.jwt_issuer,
+            "iat": now,
+            "exp": now + 60,
+        },
+        s.jwt_secret.get_secret_value(),
+        algorithm="HS256",
+    )
     with pytest.raises(tokens.TokenError):
         tokens.decode_access_token(wrong_role)
-    bad_sub = jwt.encode({"sub": "x", "tid": str(tid), "role": "admin", "typ": "access", "iss": s.jwt_issuer,
-                          "iat": now, "exp": now + 60}, s.jwt_secret.get_secret_value(), algorithm="HS256")
+    bad_sub = jwt.encode(
+        {
+            "sub": "x",
+            "tid": str(tid),
+            "role": "admin",
+            "typ": "access",
+            "iss": s.jwt_issuer,
+            "iat": now,
+            "exp": now + 60,
+        },
+        s.jwt_secret.get_secret_value(),
+        algorithm="HS256",
+    )
     with pytest.raises(tokens.TokenError):
         tokens.decode_access_token(bad_sub)
 
@@ -182,7 +222,11 @@ def test_api_key_and_csrf_and_totp_helpers():
     plain, prefix, digest = tokens.new_api_key()
     assert tokens.parse_api_key(plain) == prefix and tokens.sha256_hex(plain) == digest
     assert tokens.parse_api_key("ofm_short_x") is None and tokens.parse_api_key("nope") is None
-    assert tokens.csrf_matches("a", "a") and not tokens.csrf_matches("a", "b") and not tokens.csrf_matches(None, "a")
+    assert (
+        tokens.csrf_matches("a", "a")
+        and not tokens.csrf_matches("a", "b")
+        and not tokens.csrf_matches(None, "a")
+    )
     sec = tokens.new_totp_secret()
     assert tokens.verify_totp(sec, pyotp.TOTP(sec).now())
     assert not tokens.verify_totp(sec, "abc") and not tokens.verify_totp(sec, "12345")
@@ -207,7 +251,10 @@ def test_log_redaction():
     assert "pit-" not in redact_text("token pit-12345678-abcd")
     assert "a@b.com" not in redact_text("mail a@b.com")
     assert redact({"password": "x", "nested": [{"token": "y"}], "ok": 1}) == {
-        "password": "[REDACTED]", "nested": [{"token": "[REDACTED]"}], "ok": 1}
+        "password": "[REDACTED]",
+        "nested": [{"token": "[REDACTED]"}],
+        "ok": 1,
+    }
     rec = logging.LogRecord("t", logging.INFO, "f", 1, "user %s", ("x@y.com",), None)
     rec.api_key = "secret"
     out = json.loads(JsonFormatter().format(rec))

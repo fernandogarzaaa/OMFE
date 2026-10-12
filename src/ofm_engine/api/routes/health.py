@@ -32,7 +32,7 @@ def readyz() -> JSONResponse:
             db.execute(text("SELECT 1"))
         finally:
             db.close()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return JSONResponse({"status": "unavailable", "db": "down"}, status_code=503)
     return JSONResponse({"status": "ready", "db": "ok"})
 
@@ -54,6 +54,9 @@ def metrics(request: Request) -> Response:
     auth = request.headers.get("authorization", "")
     supplied = auth[7:] if auth.lower().startswith("bearer ") else ""
     if not supplied or not hmac.compare_digest(supplied.encode(), token.encode()):
-        return JSONResponse(error_body("unauthorized", "invalid metrics token"), status_code=401,
-                            headers={"WWW-Authenticate": "Bearer"})
+        return JSONResponse(
+            error_body("unauthorized", "invalid metrics token"),
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)

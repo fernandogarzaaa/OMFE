@@ -28,14 +28,23 @@ def test_capi_normalisation_rules():
     assert hashing.hash_field("em", None) is None and hashing.hash_field("db", "nope") is None
     with pytest.raises(ValueError):
         hashing.hash_field("fbc", "x")
-    assert hashing.hash_user_data({"em": "a@b.co", "fbc": "keep-out", "ph": ""}) == {"em": [hashing.sha256("a@b.co")]}
+    assert hashing.hash_user_data({"em": "a@b.co", "fbc": "keep-out", "ph": ""}) == {
+        "em": [hashing.sha256("a@b.co")]
+    }
     assert len(hashing.keyed_hash("1.2.3.4", "salt")) == 64
 
 
 def _ev(**kw):
-    base = dict(event_name="Lead", event_id="e1", event_source_url="https://x.example/apply/demo",
-                raw_user={"em": "A@B.co", "ph": "+1 555 0100", "external_id": "L1"}, client_user_agent="UA",
-                client_ip_address="1.2.3.4", fbc="fb.1.1700000000000.abc", fbp="fb.1.1700000000000.123")
+    base = dict(
+        event_name="Lead",
+        event_id="e1",
+        event_source_url="https://x.example/apply/demo",
+        raw_user={"em": "A@B.co", "ph": "+1 555 0100", "external_id": "L1"},
+        client_user_agent="UA",
+        client_ip_address="1.2.3.4",
+        fbc="fb.1.1700000000000.abc",
+        fbp="fb.1.1700000000000.123",
+    )
     base.update(kw)
     return meta_capi.CapiEvent(**base)
 
@@ -52,11 +61,18 @@ def test_capi_payload_shape():
     assert body == {"data": [out], "test_event_code": "TEST1"}
 
 
-@pytest.mark.parametrize("kw,msg", [
-    ({"event_name": ""}, "event_name"), ({"action_source": "fax"}, "action_source"), ({"event_id": ""}, "event_id"),
-    ({"event_time": int(time.time()) + 3600}, "future"), ({"event_time": int(time.time()) - 8 * 86400}, "7 days"),
-    ({"event_source_url": None}, "event_source_url"), ({"client_user_agent": None}, "client_user_agent"),
-])
+@pytest.mark.parametrize(
+    "kw,msg",
+    [
+        ({"event_name": ""}, "event_name"),
+        ({"action_source": "fax"}, "action_source"),
+        ({"event_id": ""}, "event_id"),
+        ({"event_time": int(time.time()) + 3600}, "future"),
+        ({"event_time": int(time.time()) - 8 * 86400}, "7 days"),
+        ({"event_source_url": None}, "event_source_url"),
+        ({"client_user_agent": None}, "client_user_agent"),
+    ],
+)
 def test_capi_validation(kw, msg):
     with pytest.raises(meta_capi.CapiValidationError, match=msg):
         meta_capi.build_server_event(_ev(**kw))
@@ -64,8 +80,16 @@ def test_capi_validation(kw, msg):
 
 def test_capi_no_identifiers_and_batch_limits():
     with pytest.raises(meta_capi.CapiValidationError):
-        meta_capi.build_server_event(_ev(action_source="system_generated", raw_user={}, client_user_agent=None,
-                                         client_ip_address=None, fbc=None, fbp=None))
+        meta_capi.build_server_event(
+            _ev(
+                action_source="system_generated",
+                raw_user={},
+                client_user_agent=None,
+                client_ip_address=None,
+                fbc=None,
+                fbp=None,
+            )
+        )
     with pytest.raises(meta_capi.CapiValidationError):
         meta_capi.build_request_body([])
     with pytest.raises(meta_capi.CapiValidationError):
@@ -76,12 +100,14 @@ def test_meta_client_mock_and_live():
     mock = meta_capi.MetaCapiClient(meta_capi.MetaCredentials(pixel_id="", access_token=None))
     assert mock.mode == "mock" and mock.send([_ev()])["events_received"] == 1
     assert mock.check_auth()["mode"] == "mock"
-    live = meta_capi.MetaCapiClient(meta_capi.MetaCredentials(pixel_id="PX1", access_token="EAAtoken",
-                                                              test_event_code="T9"),
-                                    http=HttpClient(max_retries=0))
+    live = meta_capi.MetaCapiClient(
+        meta_capi.MetaCredentials(pixel_id="PX1", access_token="EAAtoken", test_event_code="T9"),
+        http=HttpClient(max_retries=0),
+    )
     with respx.mock() as rx:
         route = rx.post("https://graph.facebook.com/v25.0/PX1/events").mock(
-            return_value=httpx.Response(200, json={"events_received": 1}))
+            return_value=httpx.Response(200, json={"events_received": 1})
+        )
         live.send([_ev()])
         body = json.loads(route.calls[0].request.content)
     assert body["access_token"] == "EAAtoken" and body["test_event_code"] == "T9"
@@ -89,7 +115,9 @@ def test_meta_client_mock_and_live():
 
 
 def test_tiktok_build_and_mock():
-    ev = tiktok.TikTokEvent(event="Lead", event_id="e", email="A@b.co", phone="+1 555", ttclid="tt", url="https://x")
+    ev = tiktok.TikTokEvent(
+        event="Lead", event_id="e", email="A@b.co", phone="+1 555", ttclid="tt", url="https://x"
+    )
     out = tiktok.build_event(ev)
     assert out["event"] == "SubmitForm" and out["user"]["email"] == hashing.sha256("a@b.co")
     assert out["user"]["ttclid"] == "tt" and out["page"] == {"url": "https://x"}
@@ -103,7 +131,11 @@ def test_http_retries_then_succeeds():
 
     def handler(req):
         calls["n"] += 1
-        return httpx.Response(429, headers={"Retry-After": "0"}) if calls["n"] < 3 else httpx.Response(200, json={})
+        return (
+            httpx.Response(429, headers={"Retry-After": "0"})
+            if calls["n"] < 3
+            else httpx.Response(200, json={})
+        )
 
     sleeps = []
     c = HttpClient(transport=httpx.MockTransport(handler), sleep=sleeps.append, max_retries=4)
@@ -129,7 +161,10 @@ def test_http_errors():
 
     with pytest.raises(UnsafeURLError):
         guarded.request("GET", "https://evil.example/")
-    assert backoff_delay(10) <= 25 and retry_after_seconds(httpx.Response(429, headers={"Retry-After": "x"})) is None
+    assert (
+        backoff_delay(10) <= 25
+        and retry_after_seconds(httpx.Response(429, headers={"Retry-After": "x"})) is None
+    )
     assert retry_after_seconds(httpx.Response(429, headers={"Retry-After": "999"})) == 30.0
 
 
@@ -158,7 +193,11 @@ def test_ghl_mock_and_signature():
     g.add_to_workflow(cid, "wf")
     g.update_opportunity_stage("o1", "s1")
     key = Ed25519PrivateKey.generate()
-    pem = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    pem = (
+        key.public_key()
+        .public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode()
+    )
     body = b'{"type":"ContactCreate"}'
     sig = base64.b64encode(key.sign(body)).decode()
     assert verify_ghl_signature(body, {"X-GHL-Signature": sig}, ed25519_pem=pem)
@@ -169,21 +208,35 @@ def test_ghl_mock_and_signature():
 
 # --------------------------------------------------------------------------- scoring
 def test_scoring_breakdown_and_tiers():
-    r = scoring.score_lead(followers={"instagram": 250_000, "tiktok": 400_000}, earnings_range="10k-25k",
-                           has_phone=True, socials={"instagram": "@x"}, timezone="America/New_York",
-                           target_timezones=["America/"])
+    r = scoring.score_lead(
+        followers={"instagram": 250_000, "tiktok": 400_000},
+        earnings_range="10k-25k",
+        has_phone=True,
+        socials={"instagram": "@x"},
+        timezone="America/New_York",
+        target_timezones=["America/"],
+    )
     assert r.tier == "hot" and r.score >= 70
-    assert set(r.breakdown) >= {"audience", "multi_platform", "earnings", "contactable", "socials", "timezone"}
+    assert set(r.breakdown) >= {
+        "audience",
+        "multi_platform",
+        "earnings",
+        "contactable",
+        "socials",
+        "timezone",
+    }
     cold = scoring.score_lead(followers={}, earnings_range="none", has_phone=False, socials={})
     assert cold.score == 0 and cold.tier == "cold"
-    adj = scoring.score_lead(followers={"ig": 1000}, earnings_range="1k-5k", has_phone=False, socials={},
-                             ai_adjustment=50)
+    adj = scoring.score_lead(
+        followers={"ig": 1000}, earnings_range="1k-5k", has_phone=False, socials={}, ai_adjustment=50
+    )
     assert adj.breakdown["ai_adjustment"] == 10
     assert scoring.tier_for(45) == "warm" and scoring.tier_for(45, {"hot": 40, "warm": 20}) == "hot"
     capped = scoring.follower_points(10**12, 35, 1_000_000)
     assert capped == 35
-    custom = scoring.score_lead(followers={}, earnings_range="none", has_phone=True, socials={},
-                                weights={"has_phone": 50})
+    custom = scoring.score_lead(
+        followers={}, earnings_range="none", has_phone=True, socials={}, weights={"has_phone": 50}
+    )
     assert custom.score == 50
 
 
@@ -192,8 +245,10 @@ def test_attribution_extraction():
     ctx = attr.extract_click_context(
         {"utm_source": "ig\x00", "utm_campaign": "c" * 500, "fbclid": "FB1", "ttclid": "TT"},
         {"_fbc": "fb.1.1600000000000.old", "_fbp": "fb.1.1600000000000.42"},
-        "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/120 Mobile Safari", "https://www.tiktok.com/@x",
-        now_ms=1_700_000_000_000)
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/120 Mobile Safari",
+        "https://www.tiktok.com/@x",
+        now_ms=1_700_000_000_000,
+    )
     assert ctx.utm_source == "ig" and len(ctx.utm_campaign) == 120
     assert ctx.fbc == "fb.1.1700000000000.FB1"  # fresh fbclid beats cookie
     assert ctx.fbp == "fb.1.1600000000000.42" and ctx.ttclid == "TT"
@@ -203,21 +258,27 @@ def test_attribution_extraction():
     assert ctx2.fbc == "fb.1.1600000000000.old" and ctx2.fbp == "" and ctx2.is_bot
 
 
-@pytest.mark.parametrize("ua,expected", [
-    ("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) Safari/604.1", ("tablet", "ios", "safari")),
-    ("Mozilla/5.0 (Windows NT 10.0; Win64) Edg/120", ("desktop", "windows", "edge")),
-    ("Mozilla/5.0 (Macintosh; Intel Mac OS X 14) Firefox/121", ("desktop", "macos", "firefox")),
-    ("Mozilla/5.0 (X11; Linux x86_64) OPR/100", ("desktop", "linux", "opera")),
-    ("Mozilla/5.0 (iPhone) FBAN/FBIOS FBAV/400", ("mobile", "ios", "facebook")),
-    ("Mozilla/5.0 (iPhone) musical_ly_30", ("mobile", "ios", "tiktok")),
-    ("SomethingElse/1.0", ("desktop", "other", "other")),
-])
+@pytest.mark.parametrize(
+    "ua,expected",
+    [
+        ("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) Safari/604.1", ("tablet", "ios", "safari")),
+        ("Mozilla/5.0 (Windows NT 10.0; Win64) Edg/120", ("desktop", "windows", "edge")),
+        ("Mozilla/5.0 (Macintosh; Intel Mac OS X 14) Firefox/121", ("desktop", "macos", "firefox")),
+        ("Mozilla/5.0 (X11; Linux x86_64) OPR/100", ("desktop", "linux", "opera")),
+        ("Mozilla/5.0 (iPhone) FBAN/FBIOS FBAV/400", ("mobile", "ios", "facebook")),
+        ("Mozilla/5.0 (iPhone) musical_ly_30", ("mobile", "ios", "tiktok")),
+        ("SomethingElse/1.0", ("desktop", "other", "other")),
+    ],
+)
 def test_user_agent_parsing(ua, expected):
     assert attr.parse_user_agent(ua)[:3] == expected
 
 
 def test_url_helpers():
-    assert attr.append_params("https://x.com/p?a=1#f", {"a": "2", "b": "3", "c": ""}) == "https://x.com/p?a=1&b=3#f"
+    assert (
+        attr.append_params("https://x.com/p?a=1#f", {"a": "2", "b": "3", "c": ""})
+        == "https://x.com/p?a=1&b=3#f"
+    )
     assert attr.safe_destination("https://x.com") and not attr.safe_destination("javascript:alert(1)")
     assert not attr.safe_destination("//x.com") and not attr.safe_destination("http://[bad")
     assert attr.referrer_host("not a url") == "" and attr.referrer_host(None) == ""
@@ -229,7 +290,9 @@ def test_tenant_config_layers(tmp_path):
     from ofm_engine.tenant_config import build_config, env_var_name, load_yaml
 
     (tmp_path / "acme.yaml").write_text("slug: acme\nname: Acme\nbrand:\n  primary_color: '#112233'\n")
-    cfg = build_config("acme", "Acme", tmp_path, {"brand": {"name": "Acme UI"}, "creators": [{"slug": "evil"}]})
+    cfg = build_config(
+        "acme", "Acme", tmp_path, {"brand": {"name": "Acme UI"}, "creators": [{"slug": "evil"}]}
+    )
     assert cfg.brand.primary_color == "#112233" and cfg.brand.name == "Acme UI" and cfg.creators == []
     assert load_yaml("missing", tmp_path) == {"slug": "missing", "name": "missing"}
     with pytest.raises(ValueError):

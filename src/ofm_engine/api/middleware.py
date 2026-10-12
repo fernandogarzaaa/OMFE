@@ -1,4 +1,5 @@
-"""Security headers (CSP w/ per-request nonce, HSTS ...), rate limiting, request metrics, CSRF cookie seeding."""
+"""Security headers (CSP w/ per-request nonce, HSTS ...), rate limiting, request metrics,
+CSRF cookie seeding."""
 
 from __future__ import annotations
 
@@ -17,27 +18,33 @@ from ..settings import get_settings
 from .errors import error_body
 
 REGISTRY = CollectorRegistry()
-REQUESTS = Counter("ofm_http_requests_total", "HTTP requests", ["method", "route", "status"], registry=REGISTRY)
+REQUESTS = Counter(
+    "ofm_http_requests_total", "HTTP requests", ["method", "route", "status"], registry=REGISTRY
+)
 LATENCY = Histogram("ofm_http_request_seconds", "HTTP latency", ["method", "route"], registry=REGISTRY)
-RATE_LIMITED = Counter("ofm_rate_limited_total", "Requests rejected by rate limiter", ["bucket"], registry=REGISTRY)
+RATE_LIMITED = Counter(
+    "ofm_rate_limited_total", "Requests rejected by rate limiter", ["bucket"], registry=REGISTRY
+)
 
 Call = Callable[[Request], Awaitable[Response]]
 
 
 def build_csp(nonce: str) -> str:
-    return "; ".join([
-        "default-src 'self'",
-        f"script-src 'self' 'nonce-{nonce}' https://connect.facebook.net https://analytics.tiktok.com",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: https:",
-        "font-src 'self' data:",
-        "connect-src 'self' https://www.facebook.com https://analytics.tiktok.com",
-        "frame-src https://www.facebook.com",
-        "frame-ancestors 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "object-src 'none'",
-    ])
+    return "; ".join(
+        [
+            "default-src 'self'",
+            f"script-src 'self' 'nonce-{nonce}' https://connect.facebook.net https://analytics.tiktok.com",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: https:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://www.facebook.com https://analytics.tiktok.com",
+            "frame-src https://www.facebook.com",
+            "frame-ancestors 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "object-src 'none'",
+        ]
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -71,8 +78,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 def _bucket(path: str) -> str | None:
     if path.startswith("/api/v1/auth/login") or path.startswith("/api/v1/auth/refresh"):
         return "auth"
-    if path.startswith("/api/v1/public/") or path.startswith("/api/v1/hooks/") or (
-            path.startswith("/apply/")):
+    if (
+        path.startswith("/api/v1/public/")
+        or path.startswith("/api/v1/hooks/")
+        or (path.startswith("/apply/"))
+    ):
         return "public"
     if path.startswith("/l/"):
         return "redirect"
@@ -93,13 +103,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             if bucket == "public" and request.method == "GET":
                 limit = s.rate_limit_redirect_per_min  # page views are cheap; submissions are strict
             else:
-                limit = {"auth": s.rate_limit_auth_per_min, "public": s.rate_limit_public_per_min,
-                         "redirect": s.rate_limit_redirect_per_min, "api": s.rate_limit_api_per_min}[bucket]
+                limit = {
+                    "auth": s.rate_limit_auth_per_min,
+                    "public": s.rate_limit_public_per_min,
+                    "redirect": s.rate_limit_redirect_per_min,
+                    "api": s.rate_limit_api_per_min,
+                }[bucket]
             ip = request.client.host if request.client else "unknown"
             if not self.limiter.allow(f"{bucket}:{ip}", limit):
                 RATE_LIMITED.labels(bucket).inc()
-                return JSONResponse(error_body("rate_limited", "too many requests"), status_code=429,
-                                    headers={"Retry-After": "60"})
+                return JSONResponse(
+                    error_body("rate_limited", "too many requests"),
+                    status_code=429,
+                    headers={"Retry-After": "60"},
+                )
         return await call_next(request)
 
 
@@ -113,7 +130,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             return resp
         finally:
             route = request.scope.get("route")
-            name = getattr(route, "path", None) or ("spa" if not request.url.path.startswith("/api") else "unmatched")
+            name = getattr(route, "path", None) or (
+                "spa" if not request.url.path.startswith("/api") else "unmatched"
+            )
             REQUESTS.labels(request.method, name, str(status)).inc()
             LATENCY.labels(request.method, name).observe(time.perf_counter() - start)
 

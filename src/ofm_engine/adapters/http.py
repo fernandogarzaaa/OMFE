@@ -36,7 +36,7 @@ class IntegrationError(Exception):
 
 def backoff_delay(attempt: int, base: float = 0.5, cap: float = 20.0, jitter: float = 0.25) -> float:
     delay = min(cap, base * (2**attempt))
-    return delay + random.uniform(0, delay * jitter)  # noqa: S311 - jitter, not crypto
+    return delay + random.uniform(0, delay * jitter)
 
 
 def retry_after_seconds(resp: httpx.Response) -> float | None:

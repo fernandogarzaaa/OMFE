@@ -35,7 +35,7 @@ def make_engine(url: str | None = None) -> Engine:
         eng = create_engine(url, connect_args={"check_same_thread": False}, future=True)
 
         @event.listens_for(eng, "connect")
-        def _sqlite_pragmas(dbapi_conn, _rec):  # type: ignore[no-untyped-def]
+        def _sqlite_pragmas(dbapi_conn, _rec):
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
             cur.execute("PRAGMA journal_mode=WAL")

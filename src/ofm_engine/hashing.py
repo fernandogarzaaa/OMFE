@@ -42,9 +42,11 @@ def normalize_phone(value: str, default_country_code: str = "") -> str:
     digits = re.sub(r"\D", "", value)
     had_plus = value.strip().startswith("+")
     digits = digits.lstrip("0")
-    if not had_plus and default_country_code and digits and not digits.startswith(default_country_code):
-        if len(digits) <= 10:
-            digits = default_country_code + digits
+    needs_cc = (
+        not had_plus and default_country_code and digits and not digits.startswith(default_country_code)
+    )
+    if needs_cc and len(digits) <= 10:
+        digits = default_country_code + digits
     return digits
 
 

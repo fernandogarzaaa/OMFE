@@ -70,25 +70,42 @@ def _creator_id(db: Session, p: Principal, raw: str | None) -> Any:
     if not raw:
         return None
     cid = parse_uuid(raw, "creator")
-    if db.scalar(select(Creator.id).where(Creator.tenant_id == p.tenant_id, Creator.id == cid,
-                                          Creator.deleted_at.is_(None))) is None:
+    if (
+        db.scalar(
+            select(Creator.id).where(
+                Creator.tenant_id == p.tenant_id, Creator.id == cid, Creator.deleted_at.is_(None)
+            )
+        )
+        is None
+    ):
         raise ApiError(422, "validation_error", "creator_id: creator not found")
     return cid
 
 
 def get_link(db: Session, p: Principal, link_id: str) -> TrackingLink:
-    link = db.scalar(select(TrackingLink).where(TrackingLink.tenant_id == p.tenant_id,
-                                                TrackingLink.id == parse_uuid(link_id, "link"),
-                                                TrackingLink.deleted_at.is_(None)))
+    link = db.scalar(
+        select(TrackingLink).where(
+            TrackingLink.tenant_id == p.tenant_id,
+            TrackingLink.id == parse_uuid(link_id, "link"),
+            TrackingLink.deleted_at.is_(None),
+        )
+    )
     if link is None:
         raise not_found("link")
     return link
 
 
 @router.get("")
-def list_links(creator_id: str | None = None, limit: int = 50, cursor: str | None = None,
-               p: Principal = Depends(require_member), db: Session = Depends(get_db)) -> dict[str, Any]:
-    stmt = select(TrackingLink).where(TrackingLink.tenant_id == p.tenant_id, TrackingLink.deleted_at.is_(None))
+def list_links(
+    creator_id: str | None = None,
+    limit: int = 50,
+    cursor: str | None = None,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    stmt = select(TrackingLink).where(
+        TrackingLink.tenant_id == p.tenant_id, TrackingLink.deleted_at.is_(None)
+    )
     if creator_id:
         stmt = stmt.where(TrackingLink.creator_id == parse_uuid(creator_id, "creator"))
     page = paginate(db, stmt, TrackingLink, limit, cursor, lambda link: link)
@@ -98,24 +115,44 @@ def list_links(creator_id: str | None = None, limit: int = 50, cursor: str | Non
 
 
 @router.post("", status_code=201)
-def create_link(body: LinkIn, request: Request, p: Principal = Depends(require_member),
-                db: Session = Depends(get_db)) -> dict[str, Any]:
+def create_link(
+    body: LinkIn, request: Request, p: Principal = Depends(require_member), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     slug = body.slug or secrets.token_urlsafe(6).replace("_", "x").replace("-", "y")
     if db.scalar(select(TrackingLink.id).where(TrackingLink.slug == slug)) is not None:
         raise ApiError(409, "slug_taken", "this slug is already in use")
-    link = TrackingLink(tenant_id=p.tenant_id, slug=slug, creator_id=_creator_id(db, p, body.creator_id),
-                        channel=body.channel.strip().lower(), destination_url=body.destination_url,
-                        campaign=body.campaign.strip(), capi_on_click=body.capi_on_click)
+    link = TrackingLink(
+        tenant_id=p.tenant_id,
+        slug=slug,
+        creator_id=_creator_id(db, p, body.creator_id),
+        channel=body.channel.strip().lower(),
+        destination_url=body.destination_url,
+        campaign=body.campaign.strip(),
+        capi_on_click=body.capi_on_click,
+    )
     db.add(link)
     db.flush()
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="link.create",
-                 target=str(link.id), meta={"slug": slug}, ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="link.create",
+        target=str(link.id),
+        meta={"slug": slug},
+        ip=client_ip(request),
+    )
     return link_out(link)
 
 
 @router.patch("/{link_id}")
-def patch_link(link_id: str, body: LinkPatch, request: Request, p: Principal = Depends(require_member),
-               db: Session = Depends(get_db)) -> dict[str, Any]:
+def patch_link(
+    link_id: str,
+    body: LinkPatch,
+    request: Request,
+    p: Principal = Depends(require_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
     link = get_link(db, p, link_id)
     data = body.model_dump(exclude_unset=True)
     if "creator_id" in data:
@@ -123,17 +160,32 @@ def patch_link(link_id: str, body: LinkPatch, request: Request, p: Principal = D
     for key, val in data.items():
         if val is not None:
             setattr(link, key, val.strip().lower() if key == "channel" else val)
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, actor_type=p.kind, action="link.update",
-                 target=str(link.id), meta={"fields": sorted(data)}, ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        actor_type=p.kind,
+        action="link.update",
+        target=str(link.id),
+        meta={"fields": sorted(data)},
+        ip=client_ip(request),
+    )
     return link_out(link, link_click_counts(db, p.tenant_id, [link.id]).get(link.id, 0))
 
 
 @router.delete("/{link_id}")
-def delete_link(link_id: str, request: Request, p: Principal = Depends(require_admin),
-                db: Session = Depends(get_db)) -> dict[str, Any]:
+def delete_link(
+    link_id: str, request: Request, p: Principal = Depends(require_admin), db: Session = Depends(get_db)
+) -> dict[str, Any]:
     link = get_link(db, p, link_id)
     link.deleted_at = utcnow()
     link.active = False
-    audit.record(db, tenant_id=p.tenant_id, actor_id=p.actor_id, action="link.delete", target=str(link.id),
-                 ip=client_ip(request))
+    audit.record(
+        db,
+        tenant_id=p.tenant_id,
+        actor_id=p.actor_id,
+        action="link.delete",
+        target=str(link.id),
+        ip=client_ip(request),
+    )
     return {"ok": True}

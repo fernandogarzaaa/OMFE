@@ -77,13 +77,15 @@ def score_lead(
     breakdown["earnings"] = float(EARNINGS_POINTS.get(earnings_range, 0))
     breakdown["contactable"] = float(w["has_phone"]) if has_phone else 0.0
     breakdown["socials"] = float(w["has_socials"]) if any(v for v in socials.values()) else 0.0
-    tz_ok = bool(timezone) and bool(target_timezones) and any(
-        timezone.startswith(prefix) for prefix in (target_timezones or [])
+    tz_ok = (
+        bool(timezone)
+        and bool(target_timezones)
+        and any(timezone.startswith(prefix) for prefix in (target_timezones or []))
     )
     breakdown["timezone"] = float(w["timezone_match"]) if tz_ok else 0.0
     adj = max(-10, min(10, int(ai_adjustment)))
     if adj:
         breakdown["ai_adjustment"] = float(adj)
     raw = sum(breakdown.values())
-    score = int(round(max(0.0, min(100.0, raw))))
+    score = round(max(0.0, min(100.0, raw)))
     return ScoreResult(score=score, tier=tier_for(score, tiers), breakdown=breakdown)

@@ -5,7 +5,9 @@ from conftest import apply_body
 
 
 def _mk_creator(c, handle="mia"):
-    r = c.post("/api/v1/creators", json={"name": "Mia", "handle": handle, "channels": ["instagram", "TikTok"]})
+    r = c.post(
+        "/api/v1/creators", json={"name": "Mia", "handle": handle, "channels": ["instagram", "TikTok"]}
+    )
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -17,15 +19,24 @@ def _api_key(admin):
 
 
 ADMIN_ONLY = [
-    ("get", "/api/v1/users", None), ("post", "/api/v1/users", {"email": "x@y.test"}),
-    ("get", "/api/v1/integrations", None), ("put", "/api/v1/integrations/ghl", {"fields": {}}),
-    ("post", "/api/v1/integrations/ghl/test", None), ("get", "/api/v1/audit", None),
-    ("get", "/api/v1/api-keys", None), ("post", "/api/v1/api-keys", {"name": "k"}),
+    ("get", "/api/v1/users", None),
+    ("post", "/api/v1/users", {"email": "x@y.test"}),
+    ("get", "/api/v1/integrations", None),
+    ("put", "/api/v1/integrations/ghl", {"fields": {}}),
+    ("post", "/api/v1/integrations/ghl/test", None),
+    ("get", "/api/v1/audit", None),
+    ("get", "/api/v1/api-keys", None),
+    ("post", "/api/v1/api-keys", {"name": "k"}),
     ("post", "/api/v1/automations/webhooks", {"url": "https://hooks.slack.com/x", "events": ["*"]}),
 ]
 MEMBER_OK = [
-    ("get", "/api/v1/creators"), ("get", "/api/v1/leads"), ("get", "/api/v1/pipeline"), ("get", "/api/v1/links"),
-    ("get", "/api/v1/kpis"), ("get", "/api/v1/revenue"), ("get", "/api/v1/automations/jobs"),
+    ("get", "/api/v1/creators"),
+    ("get", "/api/v1/leads"),
+    ("get", "/api/v1/pipeline"),
+    ("get", "/api/v1/links"),
+    ("get", "/api/v1/kpis"),
+    ("get", "/api/v1/revenue"),
+    ("get", "/api/v1/automations/jobs"),
     ("get", "/api/v1/automations/webhooks"),
 ]
 
@@ -61,8 +72,9 @@ def test_member_and_api_key_allowed(app, admin_a, member_a, method, path):
 def test_member_cannot_delete_creators_or_links(admin_a, member_a):
     cr = _mk_creator(member_a)
     assert member_a.delete(f"/api/v1/creators/{cr['id']}").status_code == 403
-    lk = member_a.post("/api/v1/links", json={"channel": "ig", "destination_url": "https://example.com",
-                                              "campaign": "c1"}).json()
+    lk = member_a.post(
+        "/api/v1/links", json={"channel": "ig", "destination_url": "https://example.com", "campaign": "c1"}
+    ).json()
     assert member_a.delete(f"/api/v1/links/{lk['id']}").status_code == 403
     assert admin_a.delete(f"/api/v1/links/{lk['id']}").status_code == 200
     assert admin_a.delete(f"/api/v1/creators/{cr['id']}").status_code == 200
@@ -83,8 +95,11 @@ def test_invalid_and_revoked_api_key(app, admin_a):
     assert c.get("/api/v1/leads", headers={"X-API-Key": k["key"][:-2] + "zz"}).status_code == 401
     assert admin_a.delete(f"/api/v1/api-keys/{k['id']}").status_code == 200
     assert c.get("/api/v1/leads", headers={"X-API-Key": k["key"]}).status_code == 401
-    assert "key" not in admin_a.get("/api/v1/api-keys").json()["items"][0] if admin_a.get(
-        "/api/v1/api-keys").json()["items"] else True
+    assert (
+        "key" not in admin_a.get("/api/v1/api-keys").json()["items"][0]
+        if admin_a.get("/api/v1/api-keys").json()["items"]
+        else True
+    )
 
 
 def test_api_key_writes_skip_csrf(app, admin_a):
@@ -95,14 +110,24 @@ def test_api_key_writes_skip_csrf(app, admin_a):
 
 def test_tenant_isolation(app, admin_a, admin_b, client):
     cr = _mk_creator(admin_a)
-    lk = admin_a.post("/api/v1/links", json={"channel": "ig", "destination_url": "https://example.com",
-                                             "campaign": "c", "slug": "alpha-ig"}).json()
+    lk = admin_a.post(
+        "/api/v1/links",
+        json={"channel": "ig", "destination_url": "https://example.com", "campaign": "c", "slug": "alpha-ig"},
+    ).json()
     lead = client.post("/api/v1/public/alpha/apply", json=apply_body()).json()
-    sub = admin_a.post("/api/v1/automations/webhooks",
-                       json={"url": "https://hooks.slack.com/services/x", "events": ["*"]}).json()
+    sub = admin_a.post(
+        "/api/v1/automations/webhooks", json={"url": "https://hooks.slack.com/services/x", "events": ["*"]}
+    ).json()
     # beta sees nothing of alpha
-    for path in ("/api/v1/creators", "/api/v1/leads", "/api/v1/links", "/api/v1/automations/webhooks",
-                 "/api/v1/users", "/api/v1/audit", "/api/v1/automations/jobs"):
+    for path in (
+        "/api/v1/creators",
+        "/api/v1/leads",
+        "/api/v1/links",
+        "/api/v1/automations/webhooks",
+        "/api/v1/users",
+        "/api/v1/audit",
+        "/api/v1/automations/jobs",
+    ):
         items = admin_b.get(path).json()["items"]
         ids = {i["id"] for i in items}
         assert not ids & {cr["id"], lk["id"], lead["id"], sub["id"]}, path
@@ -117,8 +142,10 @@ def test_tenant_isolation(app, admin_a, admin_b, client):
     uid = admin_a.get("/api/v1/auth/me").json()["id"]
     assert admin_b.patch(f"/api/v1/users/{uid}", json={"name": "x"}).status_code == 404
     # link creator_id from another tenant rejected
-    r = admin_b.post("/api/v1/links", json={"channel": "ig", "destination_url": "https://e.com", "campaign": "c",
-                                            "creator_id": cr["id"]})
+    r = admin_b.post(
+        "/api/v1/links",
+        json={"channel": "ig", "destination_url": "https://e.com", "campaign": "c", "creator_id": cr["id"]},
+    )
     assert r.status_code == 422
     k = admin_b.get("/api/v1/kpis?range=7d").json()
     assert k["leads"] == 0 and k["clicks"] == 0
@@ -129,7 +156,9 @@ def test_csrf_enforced_for_cookie_auth(app, admin_a):
     token = admin_a.headers.pop("X-CSRF-Token")
     r = admin_a.post("/api/v1/creators", json={"name": "N", "handle": "nn"})
     assert r.status_code == 403 and r.json()["error"]["code"] == "csrf_failed"
-    r = admin_a.post("/api/v1/creators", json={"name": "N", "handle": "nn"}, headers={"X-CSRF-Token": "wrong"})
+    r = admin_a.post(
+        "/api/v1/creators", json={"name": "N", "handle": "nn"}, headers={"X-CSRF-Token": "wrong"}
+    )
     assert r.status_code == 403
     r = admin_a.post("/api/v1/creators", json={"name": "N", "handle": "nn"}, headers={"X-CSRF-Token": token})
     assert r.status_code == 201
@@ -142,14 +171,22 @@ def test_users_admin_crud(admin_a, app):
     u = r.json()
     assert u["temporary_password"]
     assert admin_a.post("/api/v1/users", json={"email": "new@alpha-agency.com"}).status_code == 409
-    assert admin_a.post("/api/v1/users", json={"email": "w@alpha-agency.com", "password": "short"}).status_code == 422
-    r = admin_a.patch(f"/api/v1/users/{u['id']}", json={"role": "admin", "name": "Renamed",
-                                                      "password": "An0ther-Long-Passw0rd"})
+    assert (
+        admin_a.post("/api/v1/users", json={"email": "w@alpha-agency.com", "password": "short"}).status_code
+        == 422
+    )
+    r = admin_a.patch(
+        f"/api/v1/users/{u['id']}",
+        json={"role": "admin", "name": "Renamed", "password": "An0ther-Long-Passw0rd"},
+    )
     assert r.json()["role"] == "admin" and r.json()["name"] == "Renamed"
     me = admin_a.get("/api/v1/auth/me").json()
     assert admin_a.delete(f"/api/v1/users/{me['id']}").json()["error"]["code"] == "cannot_delete_self"
     assert admin_a.delete(f"/api/v1/users/{u['id']}").status_code == 200
-    assert admin_a.patch(f"/api/v1/users/{me['id']}", json={"role": "member"}).json()["error"]["code"] == "last_admin"
+    assert (
+        admin_a.patch(f"/api/v1/users/{me['id']}", json={"role": "member"}).json()["error"]["code"]
+        == "last_admin"
+    )
     assert admin_a.patch("/api/v1/users/not-a-uuid", json={"name": "x"}).status_code == 404
 
 

@@ -28,7 +28,8 @@ DIST_DIR = Path(__file__).resolve().parent / "web" / "dist"
 
 LANDING_FALLBACK = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>OFM Engine</title></head>
-<body style="font-family:system-ui;background:#0b0b10;color:#eee;max-width:640px;margin:10vh auto;padding:0 20px">
+<body style="font-family:system-ui;background:#0b0b10;color:#eee;max-width:640px;margin:10vh auto;
+padding:0 20px">
 <h1>OFM Engine</h1><p>Tools for OnlyFans managers: recruitment funnel, lead scoring, GoHighLevel sync,
 Meta CAPI attribution, tracking links and revenue KPIs.</p>
 <p>The dashboard build was not found. Build the frontend into <code>src/ofm_engine/web/dist</code>.
@@ -53,8 +54,15 @@ def _bootstrap_admin() -> None:
             tenant = Tenant(slug=s.bootstrap_tenant, name=s.bootstrap_tenant.replace("-", " ").title())
             db.add(tenant)
             db.flush()
-        db.add(User(tenant_id=tenant.id, email=s.bootstrap_admin_email.lower(), name="Admin", role="admin",
-                    password_hash=hash_password(s.bootstrap_admin_password.get_secret_value())))
+        db.add(
+            User(
+                tenant_id=tenant.id,
+                email=s.bootstrap_admin_email.lower(),
+                name="Admin",
+                role="admin",
+                password_hash=hash_password(s.bootstrap_admin_password.get_secret_value()),
+            )
+        )
         log.info("bootstrap admin created")
 
 
@@ -87,19 +95,37 @@ def create_app() -> FastAPI:
         if problems:
             raise RuntimeError("refusing to start in production: " + "; ".join(problems))
     get_engine()
-    app = FastAPI(title=s.app_name, version=__version__, lifespan=lifespan, docs_url="/api/docs",
-                  redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(
+        title=s.app_name,
+        version=__version__,
+        lifespan=lifespan,
+        docs_url="/api/docs",
+        redoc_url=None,
+        openapi_url="/api/openapi.json",
+    )
     install_handlers(app)
     middleware.install(app, make_limiter(s.redis_url))
     if s.cors_origins:
         app.add_middleware(
-            CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=True,
+            CORSMiddleware,
+            allow_origins=s.cors_origins,
+            allow_credentials=True,
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-            allow_headers=["Content-Type", "X-CSRF-Token", "X-API-Key", "Last-Event-ID"], max_age=600,
+            allow_headers=["Content-Type", "X-CSRF-Token", "X-API-Key", "Last-Event-ID"],
+            max_age=600,
         )
     api = APIRouter(prefix="/api/v1")
-    for r in (auth.router, users.router, creators.router, leads.router, links.router, data.router, admin.router,
-              public.api_router, health.router):
+    for r in (
+        auth.router,
+        users.router,
+        creators.router,
+        leads.router,
+        links.router,
+        data.router,
+        admin.router,
+        public.api_router,
+        health.router,
+    ):
         api.include_router(r)
     app.include_router(api)
     app.include_router(health.router)
@@ -113,7 +139,9 @@ def _mount_spa(app: FastAPI) -> None:
     if (DIST_DIR / "assets").is_dir():
         app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
 
-    @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+    @app.api_route(
+        "/api/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False
+    )
     def api_404(rest: str) -> JSONResponse:
         return JSONResponse(error_body("not_found", "no such API route"), status_code=404)
 

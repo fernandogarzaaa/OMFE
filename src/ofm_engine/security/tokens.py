@@ -36,7 +36,12 @@ class AccessClaims:
 
 
 def create_access_token(
-    *, user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, token_version: int, mfa: bool = False,
+    *,
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    role: str,
+    token_version: int,
+    mfa: bool = False,
     now: datetime | None = None,
 ) -> str:
     s = get_settings()

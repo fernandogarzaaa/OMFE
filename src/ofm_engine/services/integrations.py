@@ -21,23 +21,33 @@ from .context import TenantContext
 @dataclass(frozen=True)
 class Field_:
     name: str
-    secret: str | None = None  # TenantSecret name
+    vault: str | None = None  # TenantSecret name
     config: tuple[str, str] | None = None  # (section, key) in tenant config overrides
     required: bool = True
 
 
 PROVIDERS: dict[str, list[Field_]] = {
-    "ghl": [Field_("token", secret="GHL_TOKEN"), Field_("location_id", config=("ghl", "location_id")),
-            Field_("pipeline_id", config=("ghl", "pipeline_id"), required=False),
-            Field_("workflow_id", config=("ghl", "workflow_id"), required=False),
-            Field_("workflow_webhook_url", secret="GHL_WORKFLOW_WEBHOOK_URL", required=False)],
-    "meta_capi": [Field_("access_token", secret="META_CAPI_TOKEN"), Field_("pixel_id", config=("meta", "pixel_id")),
-                  Field_("test_event_code", config=("meta", "test_event_code"), required=False)],
-    "tiktok": [Field_("access_token", secret="TIKTOK_ACCESS_TOKEN"),
-               Field_("pixel_code", config=("tiktok", "pixel_code")),
-               Field_("test_event_code", config=("tiktok", "test_event_code"), required=False)],
-    "llm": [Field_("anthropic_api_key", secret="ANTHROPIC_API_KEY", required=False),
-            Field_("openai_api_key", secret="OPENAI_API_KEY", required=False)],
+    "ghl": [
+        Field_("token", vault="GHL_TOKEN"),
+        Field_("location_id", config=("ghl", "location_id")),
+        Field_("pipeline_id", config=("ghl", "pipeline_id"), required=False),
+        Field_("workflow_id", config=("ghl", "workflow_id"), required=False),
+        Field_("workflow_webhook_url", vault="GHL_WORKFLOW_WEBHOOK_URL", required=False),
+    ],
+    "meta_capi": [
+        Field_("access_token", vault="META_CAPI_TOKEN"),
+        Field_("pixel_id", config=("meta", "pixel_id")),
+        Field_("test_event_code", config=("meta", "test_event_code"), required=False),
+    ],
+    "tiktok": [
+        Field_("access_token", vault="TIKTOK_ACCESS_TOKEN"),
+        Field_("pixel_code", config=("tiktok", "pixel_code")),
+        Field_("test_event_code", config=("tiktok", "test_event_code"), required=False),
+    ],
+    "llm": [
+        Field_("anthropic_api_key", vault="ANTHROPIC_API_KEY", required=False),
+        Field_("openai_api_key", vault="OPENAI_API_KEY", required=False),
+    ],
 }
 
 
@@ -46,30 +56,41 @@ class UnknownField(ValueError):
 
 
 def _is_set(ctx: TenantContext, f: Field_) -> bool:
-    if f.secret:
-        return bool(ctx.secret(f.secret))
+    if f.vault:
+        return bool(ctx.secret(f.vault))
     assert f.config is not None
     section = getattr(ctx.config, f.config[0])
     return bool(getattr(section, f.config[1], ""))
 
 
 def _mode(ctx: TenantContext, provider: str) -> str:
-    return {"ghl": lambda: ctx.ghl().mode, "meta_capi": lambda: ctx.meta().mode,
-            "tiktok": lambda: ctx.tiktok().mode, "llm": lambda: ctx.llm().mode}[provider]()
+    return {
+        "ghl": lambda: ctx.ghl().mode,
+        "meta_capi": lambda: ctx.meta().mode,
+        "tiktok": lambda: ctx.tiktok().mode,
+        "llm": lambda: ctx.llm().mode,
+    }[provider]()
 
 
 def status(ctx: TenantContext) -> list[dict[str, Any]]:
     out = []
     for provider, fields in PROVIDERS.items():
-        fs = [{"name": f.name, "set": _is_set(ctx, f), "required": f.required, "secret": bool(f.secret)}
-              for f in fields]
+        fs = [
+            {"name": f.name, "set": _is_set(ctx, f), "required": f.required, "secret": bool(f.vault)}
+            for f in fields
+        ]
         configured = all(x["set"] for x in fs if x["required"]) and (
-            provider != "llm" or any(x["set"] for x in fs))
-        out.append({"provider": provider, "configured": configured, "mode": _mode(ctx, provider), "fields": fs})
+            provider != "llm" or any(x["set"] for x in fs)
+        )
+        out.append(
+            {"provider": provider, "configured": configured, "mode": _mode(ctx, provider), "fields": fs}
+        )
     return out
 
 
-def update(ctx: TenantContext, provider: str, values: dict[str, Any], actor_id: uuid.UUID | None) -> list[str]:
+def update(
+    ctx: TenantContext, provider: str, values: dict[str, Any], actor_id: uuid.UUID | None
+) -> list[str]:
     fields = {f.name: f for f in PROVIDERS[provider]}
     unknown = set(values) - set(fields)
     if unknown:
@@ -81,11 +102,11 @@ def update(ctx: TenantContext, provider: str, values: dict[str, Any], actor_id: 
         value = "" if raw is None else str(raw).strip()
         if len(value) > 4096:
             raise ValueError(f"{name} is too long")
-        if f.secret:
+        if f.vault:
             if value:
-                secret_store.set_secret(ctx.db, ctx.tenant, f.secret, value, actor_id)
+                secret_store.set_secret(ctx.db, ctx.tenant, f.vault, value, actor_id)
             else:
-                secret_store.delete_secret(ctx.db, ctx.tenant, f.secret)
+                secret_store.delete_secret(ctx.db, ctx.tenant, f.vault)
         else:
             assert f.config is not None
             overrides.setdefault(f.config[0], {})[f.config[1]] = value[:200]
@@ -102,17 +123,31 @@ def test(ctx: TenantContext, provider: str) -> dict[str, Any]:
         if provider == "ghl":
             ghl = ctx.ghl()
             loc = ctx.call("ghl", "test", ghl.mode, ghl.get_location)
-            return {"ok": True, "mode": ghl.mode, "detail": f"location {loc.get('location', {}).get('name', 'ok')}"}
+            return {
+                "ok": True,
+                "mode": ghl.mode,
+                "detail": f"location {loc.get('location', {}).get('name', 'ok')}",
+            }
         if provider == "meta_capi":
             meta = ctx.meta()
-            ev = CapiEvent(event_name="PageView", event_id=f"test-{uuid.uuid4().hex[:12]}", action_source="system_generated",
-                           raw_user={"external_id": "ofm-engine-connection-test"})
-            res = ctx.call("meta_capi", "test", meta.mode,
-                           lambda: meta.send([ev], test_event_code=ctx.config.meta.test_event_code or "TEST_OFM"))
+            ev = CapiEvent(
+                event_name="PageView",
+                event_id=f"test-{uuid.uuid4().hex[:12]}",
+                action_source="system_generated",
+                raw_user={"external_id": "ofm-engine-connection-test"},
+            )
+            res = ctx.call(
+                "meta_capi",
+                "test",
+                meta.mode,
+                lambda: meta.send([ev], test_event_code=ctx.config.meta.test_event_code or "TEST_OFM"),
+            )
             return {"ok": True, "mode": meta.mode, "detail": f"events_received={res.get('events_received')}"}
         if provider == "tiktok":
             tt = ctx.tiktok()
-            tev = TikTokEvent(event="ViewContent", event_id=f"test-{uuid.uuid4().hex[:12]}", event_time=int(time.time()))
+            tev = TikTokEvent(
+                event="ViewContent", event_id=f"test-{uuid.uuid4().hex[:12]}", event_time=int(time.time())
+            )
             ctx.call("tiktok", "test", tt.mode, lambda: tt.send([tev]))
             return {"ok": True, "mode": tt.mode, "detail": "event accepted"}
         llm = ctx.llm()

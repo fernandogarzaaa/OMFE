@@ -41,7 +41,9 @@ def paginate(
         if ts.tzinfo is not None and db.get_bind().dialect.name == "sqlite":
             ts = ts.replace(tzinfo=None)
         stmt = stmt.where(or_(model.created_at < ts, and_(model.created_at == ts, model.id < rid)))
-    rows: Sequence[Any] = db.scalars(stmt.order_by(model.created_at.desc(), model.id.desc()).limit(limit + 1)).all()
+    rows: Sequence[Any] = db.scalars(
+        stmt.order_by(model.created_at.desc(), model.id.desc()).limit(limit + 1)
+    ).all()
     has_more = len(rows) > limit
     rows = rows[:limit]
     nxt = encode_cursor(rows[-1].created_at, rows[-1].id) if has_more and rows else None

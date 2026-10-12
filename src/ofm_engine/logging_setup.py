@@ -14,9 +14,26 @@ from datetime import UTC, datetime
 from typing import Any
 
 SENSITIVE_KEYS = {
-    "password", "passwd", "secret", "token", "access_token", "refresh_token", "authorization",
-    "api_key", "apikey", "x-api-key", "cookie", "set-cookie", "email", "phone", "em", "ph",
-    "totp", "code", "client_secret", "private_key",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "access_token",
+    "refresh_token",
+    "authorization",
+    "api_key",
+    "apikey",
+    "x-api-key",
+    "cookie",
+    "set-cookie",
+    "email",
+    "phone",
+    "em",
+    "ph",
+    "totp",
+    "code",
+    "client_secret",
+    "private_key",
 }
 
 _PATTERNS: list[tuple[re.Pattern[str], str]] = [
@@ -87,7 +104,9 @@ class RedactingTextFormatter(logging.Formatter):
 def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
-        JsonFormatter() if json_logs else RedactingTextFormatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+        JsonFormatter()
+        if json_logs
+        else RedactingTextFormatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     )
     root = logging.getLogger()
     root.handlers[:] = [handler]

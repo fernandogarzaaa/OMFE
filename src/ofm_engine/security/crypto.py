@@ -105,4 +105,6 @@ def rewrap_str(token: str, master_keys: str | None = None) -> str:
     except ValueError as exc:
         raise DecryptionError("malformed encrypted value") from exc
     new = rewrap(env, master_keys)
-    return "v1." + ".".join(base64.urlsafe_b64encode(p).decode() for p in (new.wrapped_dek, new.nonce, new.ciphertext))
+    return "v1." + ".".join(
+        base64.urlsafe_b64encode(p).decode() for p in (new.wrapped_dek, new.nonce, new.ciphertext)
+    )

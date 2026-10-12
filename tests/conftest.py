@@ -51,8 +51,15 @@ def make_tenant(slug, name=None):
         s.add(t)
         s.flush()
         for role in ("admin", "member"):
-            s.add(User(tenant_id=t.id, email=f"{role}@{slug}.test", name=f"{slug} {role}", role=role,
-                       password_hash=hash_password(PASSWORD)))
+            s.add(
+                User(
+                    tenant_id=t.id,
+                    email=f"{role}@{slug}.test",
+                    name=f"{slug} {role}",
+                    role=role,
+                    password_hash=hash_password(PASSWORD),
+                )
+            )
         return t.id
 
 
@@ -77,7 +84,9 @@ def client(app):
 def login(app, email, password=PASSWORD, totp=None):
     c = TestClient(app)
     c.__enter__()
-    r = c.post("/api/v1/auth/login", json={"email": email, "password": password, **({"totp": totp} if totp else {})})
+    r = c.post(
+        "/api/v1/auth/login", json={"email": email, "password": password, **({"totp": totp} if totp else {})}
+    )
     assert r.status_code == 200, r.text
     c.headers["X-CSRF-Token"] = c.cookies.get("csrf_token")
     return c
@@ -99,9 +108,18 @@ def admin_b(app, tenants):
 
 
 def apply_body(**kw):
-    body = {"name": "Ava Test", "email": "ava@example.net", "phone": "+1 555 555 0101",
-            "socials": {"instagram": "@ava"}, "followers": {"instagram": 120000, "tiktok": 50000},
-            "earnings_range": "5k-10k", "timezone": "America/New_York", "age_confirmed": True, "consent": True,
-            "variant": "A", "attribution": {"utm_source": "instagram", "fbc": "fb.1.1700000000000.abc"}}
+    body = {
+        "name": "Ava Test",
+        "email": "ava@example.net",
+        "phone": "+1 555 555 0101",
+        "socials": {"instagram": "@ava"},
+        "followers": {"instagram": 120000, "tiktok": 50000},
+        "earnings_range": "5k-10k",
+        "timezone": "America/New_York",
+        "age_confirmed": True,
+        "consent": True,
+        "variant": "A",
+        "attribution": {"utm_source": "instagram", "fbc": "fb.1.1700000000000.abc"},
+    }
     body.update(kw)
     return body
