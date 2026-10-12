@@ -1,0 +1,126 @@
+{
+  "name": "OFM Engine — new lead to Google Sheets + Slack",
+  "flow": [
+    {
+      "id": 1,
+      "module": "gateway:CustomWebHook",
+      "version": 1,
+      "parameters": {
+        "hook": null,
+        "maxResults": 1
+      },
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0
+        },
+        "expect": [],
+        "notes": "Register this webhook URL in OFM Engine > Automations > Webhooks (event lead.created). Verify X-OFM-Signature in module 2."
+      }
+    },
+    {
+      "id": 2,
+      "module": "util:SetVariables",
+      "version": 1,
+      "mapper": {
+        "variables": [
+          {
+            "name": "signature",
+            "value": "{{1.`__IMTHEADERS__`[].value}}"
+          },
+          {
+            "name": "lead_id",
+            "value": "{{1.data.lead_id}}"
+          }
+        ],
+        "scope": "roundtrip"
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "mapper": {
+        "url": "{{OFM_BASE_URL}}/api/v1/leads/{{2.lead_id}}",
+        "method": "get",
+        "headers": [
+          {
+            "name": "X-API-Key",
+            "value": "{{OFM_API_KEY}}"
+          }
+        ],
+        "parseResponse": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "google-sheets:addRow",
+      "version": 2,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "spreadsheetId": "",
+        "sheetId": "Leads",
+        "values": {
+          "0": "{{3.data.created_at}}",
+          "1": "{{3.data.name}}",
+          "2": "{{3.data.score}}",
+          "3": "{{3.data.tier}}",
+          "4": "{{3.data.stage}}"
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": -100
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "slack:CreateMessage",
+      "version": 4,
+      "parameters": {
+        "__IMTCONN__": null
+      },
+      "mapper": {
+        "channel": "",
+        "text": "New {{3.data.tier}} creator lead: {{3.data.name}} — score {{3.data.score}}/100"
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 100
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "sequential": false,
+      "confidential": true,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": {
+      "orphans": []
+    }
+  }
+}

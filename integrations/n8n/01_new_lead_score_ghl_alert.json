@@ -1,0 +1,238 @@
+{
+  "name": "OFM Engine — New lead → score → GHL → Discord/Slack alert",
+  "nodes": [
+    {
+      "id": "72ff2393-0d82-51ac-b8ab-555f0b9793e4",
+      "name": "OFM webhook (lead.created)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "81466d76-ae95-517d-8808-0d1d89533a45",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ofm-lead-created",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": true
+        }
+      }
+    },
+    {
+      "id": "dcfeb60f-22d4-5c1d-892c-9bfaf75ed9c0",
+      "name": "Verify signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Verify X-OFM-Signature (t=<unix>,v1=<hmac_sha256(secret, t + '.' + rawBody)>) and reject replays (>300s).\nconst crypto = require('crypto');\nconst secret = $env.OFM_WEBHOOK_SECRET;\nconst item = $input.first();\nconst header = item.json.headers['x-ofm-signature'] || '';\nconst parts = Object.fromEntries(header.split(',').map(p => p.trim().split('=')));\nconst raw = item.binary && item.binary.data ? Buffer.from(item.binary.data.data, 'base64').toString('utf8') : JSON.stringify(item.json.body);\nconst expected = crypto.createHmac('sha256', secret).update(parts.t + '.' + raw).digest('hex');\nconst age = Math.abs(Date.now() / 1000 - Number(parts.t));\nif (!parts.v1 || age > 300 || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1))) {\n  throw new Error('invalid or replayed OFM webhook');\n}\nconst body = JSON.parse(raw);\nreturn [{ json: body }];"
+      }
+    },
+    {
+      "id": "dafae265-22e4-5bdf-83b3-b86edfb93d3f",
+      "name": "Rescore lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.OFM_BASE_URL || 'http://localhost:8000')}}/api/v1/leads/{{$json.data.lead_id}}/rescore",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OFM_API_KEY",
+          "name": "OFM Engine API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "id": "c57ba639-2cb3-5a8f-8d21-e2cd3bc5db40",
+      "name": "Hot or warm?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "a58739dc-9e4e-5087-981f-c0edf6e76f38",
+              "leftValue": "={{$json.tier}}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "f8a449d5-9eb9-53df-a0c0-d76742ac970a",
+              "leftValue": "={{$json.tier}}",
+              "rightValue": "warm",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "04f84e52-6fb8-5ad2-8d1b-6474ac404502",
+      "name": "GHL: add tag (optional, mock-safe)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        -120
+      ],
+      "notes": "OFM Engine already upserts the contact + opportunity in GHL. This optional node adds an extra tag via the GHL API; disable if not needed.",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{$json.ghl_contact_id}}/tags",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GHL_TOKEN}}"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"tags\": [\"n8n-{{$json.tier}}\"]}",
+        "options": {}
+      }
+    },
+    {
+      "id": "78cecaaa-226e-5764-99c5-6fd67b5d568b",
+      "name": "Discord alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISCORD_WEBHOOK_URL}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"content\": \"🔥 New {{$json.tier}} creator lead: {{$json.name}} — score {{$json.score}}/100\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "62876d00-88a0-530d-b57c-64d2f55fd8ff",
+      "name": "Slack alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"text\": \"New {{$json.tier}} creator lead: {{$json.name}} — score {{$json.score}}/100 ({{$json.score_reasons.join(', ')}})\"}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "OFM webhook (lead.created)": {
+      "main": [
+        [
+          {
+            "node": "Verify signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify signature": {
+      "main": [
+        [
+          {
+            "node": "Rescore lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rescore lead": {
+      "main": [
+        [
+          {
+            "node": "Hot or warm?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot or warm?": {
+      "main": [
+        [
+          {
+            "node": "GHL: add tag (optional, mock-safe)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Register the webhook URL in OFM Engine (Automations > Webhooks, event lead.created) and set OFM_WEBHOOK_SECRET to the secret shown once."
+  },
+  "tags": [
+    {
+      "name": "ofm-engine"
+    }
+  ]
+}

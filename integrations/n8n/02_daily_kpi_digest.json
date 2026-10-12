@@ -1,0 +1,157 @@
+{
+  "name": "OFM Engine — Daily KPI digest",
+  "nodes": [
+    {
+      "id": "def8af93-8079-56c2-bc52-0207a01eb484",
+      "name": "Every day 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4f6b47d5-8b08-5f55-97c0-145bce6020b3",
+      "name": "Fetch KPIs (7d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{($env.OFM_BASE_URL || 'http://localhost:8000')}}/api/v1/kpis",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": false,
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "range",
+              "value": "7d"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OFM_API_KEY",
+          "name": "OFM Engine API key (X-API-Key)"
+        }
+      }
+    },
+    {
+      "id": "5cccf58e-074c-5724-8191-3ada71cfcf6c",
+      "name": "Format digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const k = $input.first().json;\nconst usd = c => '$' + (c / 100).toLocaleString('en-US', {minimumFractionDigits: 2});\nconst top = (k.by_creator || []).slice(0, 3).map(c => `• ${c.name}: ${usd(c.revenue_cents)} (${c.subs} subs)`).join('\\n');\nconst text = `📊 OFM Engine — last 7 days\\nClicks: ${k.clicks}  Leads: ${k.leads}  Signed: ${k.signed}\\nRevenue: ${usd(k.revenue_cents)}  New subs: ${k.subs}\\nClick→lead: ${(k.conversion.click_to_lead*100).toFixed(1)}%  Lead→signed: ${(k.conversion.lead_to_signed*100).toFixed(1)}%\\nTop creators:\\n${top}`;\nreturn [{ json: { text } }];"
+      }
+    },
+    {
+      "id": "bf2315de-05cb-5b64-aba8-6ba0fe3d67dd",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.SLACK_WEBHOOK_URL}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({text: $json.text}) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "513c70c0-12bb-54f2-b0b8-7eb78e2eb2c4",
+      "name": "Post to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.DISCORD_WEBHOOK_URL}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({content: $json.text}) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Every day 09:00": {
+      "main": [
+        [
+          {
+            "node": "Fetch KPIs (7d)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch KPIs (7d)": {
+      "main": [
+        [
+          {
+            "node": "Format digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format digest": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "tags": [
+    {
+      "name": "ofm-engine"
+    }
+  ]
+}
