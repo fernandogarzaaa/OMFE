@@ -10,7 +10,7 @@
   },
   "timeout": 900,
   "plugins": [],
-  "min_passed": 349,
+  "min_passed": 350,
   "allowed_skips": {
     "tests/test_cli_migrations.py::test_migrations_no_drift_postgres": "needs TEST_DATABASE_URL (runs in the CI postgres matrix leg, skips on sqlite)"
   },
@@ -27,7 +27,7 @@
     "tests/test_integration_contract.py": "94a6862ddbe8544c5a4f10bf249ba7d8187f1a26ebcea859b5f9334d72538a10",
     "tests/test_jobs.py": "30a63cc7ff259cb7bcfa16ed08fbfe609113273ee73612b107647c1da05223a2",
     "tests/test_mutation_deps.py": "fdbcf5a08c852fc911dca0c74bfc52ac63a07e3329046f7bb8b511c2b45601a6",
-    "tests/test_mutation_domain.py": "1544dcad3b22e433f04741181551f5c449e49c203c6866f2d0ee82b006f264fb",
+    "tests/test_mutation_domain.py": "e4831748bc1c07ab9c3d83e99da9115268a280965a935601c85e86ab825ecbbf",
     "tests/test_mutation_security.py": "8f494ee09a1dff59b2912fe891a02e6c63dd02e1d8deb0b4a7e5ee0dba4938f9",
     "tests/test_passwords.py": "17570abcb4690d9638d51e6e25bb492b86fc976f0acc0dbf55cc7498420e8e11",
     "tests/test_public.py": "45c0e2e5aab60d9d98097745c0451f06ea456901f2c25c11c7caf1b861aff5a0",
@@ -206,6 +206,7 @@
     "tests/test_mutation_domain.py::test_score_breakdown_exact",
     "tests/test_mutation_domain.py::test_multi_platform_counts_and_cap",
     "tests/test_mutation_domain.py::test_negative_and_none_followers_clamped",
+    "tests/test_mutation_domain.py::test_scoring_tables_match_spec",
     "tests/test_mutation_domain.py::test_earnings_points[none-0]",
     "tests/test_mutation_domain.py::test_earnings_points[0-1k-5]",
     "tests/test_mutation_domain.py::test_earnings_points[1k-5k-15]",

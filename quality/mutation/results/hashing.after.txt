@@ -1,0 +1,22 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/hashing.py
+  sha256                             100.0%    1/1   killed  ok
+  is_hashed                          100.0%    1/1   killed  ok
+  normalize_email                    100.0%    1/1   killed  ok
+  normalize_phone                    100.0%    8/8   killed  ok
+  normalize_name                     100.0%    4/4   killed  ok
+  normalize_city                     100.0%    1/1   killed  ok
+  normalize_state                    100.0%    2/2   killed  ok
+  normalize_zip                      100.0%    3/3   killed  ok
+  normalize_country                  100.0%    2/2   killed  ok
+  normalize_dob                      100.0%    3/3   killed  ok
+  normalize_gender                   100.0%    3/3   killed  ok
+  hash_field                         100.0%    6/6   killed  ok
+  hash_user_data                     100.0%    2/2   killed  ok
+  keyed_hash                         100.0%    1/1   killed  ok
+
+Mutants: 38  killed: 38  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 100.0%
+Time: baseline 14.5s, total 145.6s

@@ -1,0 +1,12 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/signing.py
+  compute_signature                  100.0%    3/3   killed  ok
+  sign                               100.0%    2/2   killed  ok
+  parse_header                       100.0%   11/11  killed  ok
+  verify                             100.0%   10/10  killed  ok
+
+Mutants: 26  killed: 26  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 100.0%
+Time: baseline 12.5s, total 112.2s

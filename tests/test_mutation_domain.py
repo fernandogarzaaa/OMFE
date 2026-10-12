@@ -268,7 +268,24 @@ def test_negative_and_none_followers_clamped():
     assert r.breakdown["audience"] == scoring.follower_points(10, 35, 1_000_000)
 
 
-@pytest.mark.parametrize("rng,pts", list(scoring.EARNINGS_POINTS.items()) + [("bogus", 0)])
+EARNINGS_SPEC = {"none": 0, "0-1k": 5, "1k-5k": 15, "5k-10k": 25, "10k-25k": 32, "25k+": 35}
+
+
+def test_scoring_tables_match_spec():
+    # documented contract (README / GHL note): pinned literally so a silent re-weighting is caught
+    assert scoring.EARNINGS_POINTS == EARNINGS_SPEC
+    assert scoring.DEFAULT_WEIGHTS == {
+        "followers_max": 35,
+        "followers_cap": 1_000_000,
+        "multi_platform": 4,
+        "has_phone": 5,
+        "has_socials": 5,
+        "timezone_match": 5,
+    }
+    assert scoring.DEFAULT_TIERS == {"hot": 70, "warm": 40}
+
+
+@pytest.mark.parametrize("rng,pts", [*EARNINGS_SPEC.items(), ("bogus", 0)])
 def test_earnings_points(rng, pts):
     assert _score(earnings_range=rng).breakdown["earnings"] == float(pts)
 

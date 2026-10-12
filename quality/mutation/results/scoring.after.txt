@@ -1,0 +1,14 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/scoring.py
+  <module>                           100.0%   14/14  killed  ok
+  follower_points                     91.7%   11/12  killed  WEAK
+      L43   comparison        `total_followers <= 0` -> `(total_followers < 0)`  [survived]
+  tier_for                           100.0%    6/6   killed  ok
+  score_lead                         100.0%   24/24  killed  ok
+
+Mutants: 56  killed: 55  survived: 1  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 98.2%
+Time: baseline 14.3s, total 312.5s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

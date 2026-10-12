@@ -1,0 +1,24 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/api/deps.py
+  <module>                           100.0%    1/1   killed  ok
+  Principal.actor_id                 100.0%    2/2   killed  ok
+  Principal.is_admin                 100.0%    4/4   killed  ok
+  client_ip                          100.0%    1/1   killed  ok
+  check_csrf                         100.0%    3/3   killed  ok
+  _principal_from_api_key             91.7%   11/12  killed  WEAK
+      L58   remove-raise      `raise ApiError(401, "invali...` -> `pass`  [survived]
+  load_user_from_access              100.0%   14/14  killed  ok
+  get_principal                      100.0%    5/5   killed  ok
+  require_roles                      100.0%    1/1   killed  ok
+  require_roles._dep                 100.0%    3/3   killed  ok
+  get_current_user                   100.0%    1/1   killed  ok
+      ! L120  failure path (external-call): calls `db.get` but no test simulates that call failing
+  tenant_ctx                         100.0%    1/1   killed  ok
+  parse_uuid                         100.0%    3/3   killed  ok
+
+Mutants: 51  killed: 50  survived: 1  not covered: 0  timeouts: 0
+Failure-path gaps: 1
+Mutation score: 98.0%
+Time: baseline 31.4s, total 480.5s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

@@ -1,0 +1,17 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/crypto.py
+  generate_master_key                100.0%    1/1   killed  ok
+  _kek                               100.0%    4/4   killed  ok
+  _aad                               100.0%    1/1   killed  ok
+  encrypt                            100.0%    3/3   killed  ok
+  decrypt                            100.0%    3/3   killed  ok
+  rewrap                             100.0%    3/3   killed  ok
+  encrypt_str                        100.0%    2/2   killed  ok
+  decrypt_str                        100.0%    5/5   killed  ok
+  rewrap_str                         100.0%    6/6   killed  ok
+
+Mutants: 28  killed: 28  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 100.0%
+Time: baseline 10.3s, total 101.9s

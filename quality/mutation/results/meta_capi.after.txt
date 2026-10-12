@@ -1,0 +1,21 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/adapters/meta_capi.py
+  <module>                           100.0%    6/6   killed  ok
+  build_server_event                 100.0%   26/26  killed  ok
+  build_request_body                 100.0%    6/6   killed  ok
+  mock_handler                       100.0%   12/12  killed  ok
+  MetaCredentials.live               100.0%    2/2   killed  ok
+  MetaCapiClient.__init__            100.0%    1/1   killed  ok
+      ! L169  failure path (external-call): calls `httpx.MockTransport` but no test simulates that call failing
+  MetaCapiClient.endpoint            100.0%    1/1   killed  ok
+  MetaCapiClient.send                100.0%    3/3   killed  ok
+      ! L181  failure path (external-call): calls `self.http.request` but no test simulates that call failing
+  MetaCapiClient.check_auth          100.0%    3/3   killed  ok
+      ! L188  failure path (external-call): calls `self.http.request` but no test simulates that call failing
+
+Mutants: 60  killed: 60  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 3
+Mutation score: 100.0%
+Time: baseline 10.8s, total 193.5s
+note: sampled 60 of 61 mutants (--max-mutants)

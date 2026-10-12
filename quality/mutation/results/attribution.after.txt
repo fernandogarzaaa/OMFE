@@ -1,0 +1,21 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/attribution.py
+  <module>                           100.0%    2/2   killed  ok
+  ClickContext.as_dict               100.0%    1/1   killed  ok
+  clean_param                        100.0%    2/2   killed  ok
+  build_fbc                          100.0%    4/4   killed  ok
+  build_fbp                          100.0%    6/6   killed  ok
+  valid_fbc                          100.0%    2/2   killed  ok
+  valid_fbp                          100.0%    1/1   killed  ok
+  parse_user_agent                   100.0%   27/27  killed  ok
+  referrer_host                      100.0%    6/6   killed  ok
+  extract_click_context              100.0%    2/2   killed  ok
+  append_params                      100.0%    3/3   killed  ok
+  safe_destination                   100.0%    4/4   killed  ok
+
+Mutants: 60  killed: 60  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 100.0%
+Time: baseline 27.6s, total 241.2s
+note: sampled 60 of 80 mutants (--max-mutants)

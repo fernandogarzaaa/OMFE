@@ -1,0 +1,21 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/tokens.py
+  create_access_token                100.0%    4/4   killed  ok
+  decode_access_token                100.0%   11/11  killed  ok
+  new_refresh_token                  100.0%    2/2   killed  ok
+  sha256_hex                         100.0%    1/1   killed  ok
+  new_csrf_token                     100.0%    2/2   killed  ok
+  csrf_matches                       100.0%    6/6   killed  ok
+  new_api_key                        100.0%    3/3   killed  ok
+  parse_api_key                      100.0%   14/14  killed  ok
+  new_totp_secret                    100.0%    1/1   killed  ok
+  totp_uri                           100.0%    1/1   killed  ok
+  verify_totp                         88.9%    8/9   killed  WEAK
+      L139  boolean           `not code.isdigit() or len(c...` -> `(not code.isdigit() and len...`  [survived]
+
+Mutants: 54  killed: 53  survived: 1  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 98.1%
+Time: baseline 14.6s, total 251.7s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

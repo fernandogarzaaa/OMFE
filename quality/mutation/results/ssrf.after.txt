@@ -1,0 +1,13 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/ssrf.py
+  _default_resolver                  100.0%    3/3   killed  ok
+  is_public_ip                       100.0%   10/10  killed  ok
+  allowed_integration_hosts          100.0%    2/2   killed  ok
+  check_integration_url              100.0%    6/6   killed  ok
+  check_webhook_url                  100.0%   24/24  killed  ok
+
+Mutants: 45  killed: 45  survived: 0  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 100.0%
+Time: baseline 11.0s, total 194.1s
