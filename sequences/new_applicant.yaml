@@ -1,0 +1,36 @@
+name: New applicant (all tiers)
+trigger: tag ofm-recruit added
+steps:
+  - delay: 0m
+    channel: sms
+    body: "Hi {{contact.first_name}}, thanks for applying to {{location.name}}! Grab a quick intro call here: {{custom_values.booking_link}} Reply STOP to opt out."
+  - delay: 5m
+    channel: email
+    subject: "Your application to {{location.name}}"
+    body: |
+      Hi {{contact.first_name}},
+
+      Thanks for applying — we review every application personally. The fastest next step is a
+      15-minute intro call: {{custom_values.booking_link}}
+
+      Talk soon,
+      {{location.name}}
+  - delay: 1d
+    channel: sms
+    condition: no_appointment_booked
+    body: "Hey {{contact.first_name}}, still keen to chat? Pick any time that suits you: {{custom_values.booking_link}} Reply STOP to opt out."
+  - delay: 3d
+    channel: email
+    condition: no_appointment_booked
+    subject: "Quick question, {{contact.first_name}}"
+    body: |
+      Hi {{contact.first_name}},
+
+      Is growing your creator business still a priority this month? If so, book a call here:
+      {{custom_values.booking_link}} — if not, no worries, just reply "later".
+
+      {{location.name}}
+  - delay: 7d
+    channel: sms
+    condition: no_appointment_booked
+    body: "Last check-in from {{location.name}} — we'll close your application soon. Book here if you'd like to talk: {{custom_values.booking_link}} Reply STOP to opt out."

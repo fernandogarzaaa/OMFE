@@ -1,0 +1,12 @@
+name: Hot lead fast-track (score >= 70)
+trigger: tag tier-hot added
+steps:
+  - delay: 0m
+    channel: internal_alert
+    body: "🔥 Hot creator lead: {{contact.name}} (score {{contact.lead_score}}). Call within 15 minutes."
+  - delay: 2m
+    channel: sms
+    body: "Hi {{contact.first_name}}! Your profile stood out — our team would love to talk today. Book a slot: {{custom_values.booking_link}} Reply STOP to opt out."
+  - delay: 4h
+    channel: task
+    body: "Manual follow-up call for {{contact.name}} if no booking yet."

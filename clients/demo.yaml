@@ -1,0 +1,63 @@
+# OFM Engine tenant config for the demo agency. NO SECRETS in this file:
+# paste tokens in Settings > Integrations (encrypted at rest) or set CLIENT_DEMO_<NAME> env vars.
+slug: demo
+name: Demo Agency
+brand:
+  name: Demo Agency
+  tagline: Management, marketing and growth for creators.
+  primary_color: "#8b5cf6"
+  support_email: support@example.com
+funnel:
+  variants:
+    - key: A
+      headline: Grow your creator business with a team that's all-in
+      subhead: Management, marketing and strategy so you can focus on creating.
+    - key: B
+      headline: Earn more, burn out less
+      subhead: A dedicated manager, a real growth plan and transparent splits.
+  cta: Apply in 60 seconds
+  benefits: [Dedicated manager, Growth strategy, Transparent splits, Weekly reporting]
+  booking_url: ""
+  privacy_url: ""
+ghl:
+  location_id: ""        # set to switch GHL to live (with GHL_TOKEN)
+  pipeline_id: ""
+  stages: {}             # new / contacted / call_booked / signed / lost -> GHL stage ids
+  workflow_id: ""
+  base_tags: [ofm-recruit, demo]
+meta:
+  pixel_id: ""           # set + META_CAPI_TOKEN to send live CAPI events
+  test_event_code: ""
+tiktok:
+  pixel_code: ""
+features:
+  ghl_sync: true
+  meta_capi: true
+  tiktok_events: false
+  ai_enrichment: true
+  ab_testing: true
+  outbound_webhooks: true
+  alerts: true
+target_timezones: ["America/", "Europe/London"]
+scoring:
+  tiers: {hot: 70, warm: 40}
+revenue_mapping:
+  date: date
+  creator: creator
+  campaign: campaign
+  gross: gross
+  net: net
+  new_subs: new_subs
+  date_format: "%Y-%m-%d"
+creators:
+  - slug: miarose
+    display_name: Mia Rose
+    bio: Fitness, travel & everyday life ✈️
+    links:
+      - {label: Instagram, url: "https://instagram.com/"}
+  - slug: lunaskye
+    display_name: Luna Skye
+    bio: Cosplay & gaming 🎮
+  - slug: avastone
+    display_name: Ava Stone
+    bio: Lifestyle & fashion

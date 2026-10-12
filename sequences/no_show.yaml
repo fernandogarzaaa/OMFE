@@ -1,0 +1,15 @@
+name: Missed intro call
+trigger: appointment status no-show
+steps:
+  - delay: 10m
+    channel: sms
+    body: "Hi {{contact.first_name}}, sorry we missed you! Want to reschedule? {{custom_values.booking_link}} Reply STOP to opt out."
+  - delay: 1d
+    channel: email
+    subject: "Let's find a better time"
+    body: |
+      Hi {{contact.first_name}},
+
+      Life happens! Here's the link to pick a new time: {{custom_values.booking_link}}
+
+      {{location.name}}
