@@ -6,7 +6,8 @@ ARG NODE_IMAGE=node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e3
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
 
 # ---------------------------------------------------------------- 1. frontend
-FROM ${NODE_IMAGE} AS web
+# The SPA is static output, so build it natively on the builder platform (no QEMU for npm).
+FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS web
 WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund --ignore-scripts

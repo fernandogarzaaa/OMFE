@@ -1,0 +1,22 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/crypto.py
+  generate_master_key                100.0%    1/1   killed  ok
+  _kek                                75.0%    3/4   killed  WEAK
+      L48   remove-raise      `raise ValueError("MASTER_KE...` -> `pass`  [survived]
+  _aad                               100.0%    1/1   killed  ok
+  encrypt                             66.7%    2/3   killed  WEAK
+      L58   constant          `12` -> `13`  [survived]
+  decrypt                            100.0%    3/3   killed  ok
+  rewrap                             100.0%    3/3   killed  ok
+  encrypt_str                        100.0%    2/2   killed  ok
+  decrypt_str                        100.0%    5/5   killed  ok
+  rewrap_str                          83.3%    5/6   killed  WEAK
+      L103  remove-raise      `raise ValueError("unknown v...` -> `pass`  [not covered]
+      ! L103  failure path (raise): `raise ValueError('unknown version')` is never triggered by any test
+
+Mutants: 28  killed: 25  survived: 2  not covered: 1  timeouts: 0
+Failure-path gaps: 1
+Mutation score: 89.3%
+Time: baseline 3.2s, total 34.4s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.
