@@ -1,0 +1,27 @@
+# keep the build context small and secret-free
+.git
+.github
+.venv
+**/__pycache__
+**/*.pyc
+**/node_modules
+frontend/dist
+src/ofm_engine/web/dist/*
+!src/ofm_engine/web/dist/.gitkeep
+dist
+build
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+quality/mutation
+docs/screenshots
+*.db
+*.sqlite3
+.env
+.env.*
+!.env.example
+*.pem
+*.key

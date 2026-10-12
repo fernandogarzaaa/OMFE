@@ -277,6 +277,13 @@ def serve(
     port: Annotated[int, typer.Option()] = 8000,
     reload: Annotated[bool, typer.Option()] = False,
     workers: Annotated[int, typer.Option()] = 1,
+    forwarded_allow_ips: Annotated[
+        str,
+        typer.Option(
+            envvar="FORWARDED_ALLOW_IPS",
+            help="proxies trusted for X-Forwarded-For/Proto (comma list, or * behind a managed load balancer)",
+        ),
+    ] = "127.0.0.1",
 ) -> None:
     """Run the HTTP server (uvicorn)."""
     import uvicorn  # pragma: no cover
@@ -289,7 +296,7 @@ def serve(
         reload=reload,  # pragma: no cover
         workers=workers,
         proxy_headers=True,
-        forwarded_allow_ips="127.0.0.1",
+        forwarded_allow_ips=forwarded_allow_ips,
     )
 
 

@@ -1,0 +1,88 @@
+# OFM Engine — local stack in MOCK mode ($0: no provider calls leave the machine).
+#   docker compose up --build                         # app + worker + postgres
+#   docker compose --profile redis --profile n8n up   # + optional Redis and n8n
+# Then open http://localhost:8000  (admin@demo.agency / demo-pass-2026)
+# The secrets below are throwaway dev values. For anything internet-facing set ENV=production and
+# real JWT_SECRET / MASTER_KEYS / PII_HASH_SALT (generate with `docker compose run --rm app gen-key`).
+x-app-env: &app-env
+  ENV: development
+  PUBLIC_BASE_URL: http://localhost:8000
+  DATABASE_URL: postgresql://ofm:ofm@postgres:5432/ofm
+  JWT_SECRET: dev-compose-jwt-secret-change-me-0123456789abcdef
+  PII_HASH_SALT: dev-compose-pii-salt
+  LOG_JSON: "true"
+  # REDIS_URL: redis://redis:6379/0   # uncomment with --profile redis (shared rate limits + pub/sub)
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ofm
+      POSTGRES_PASSWORD: ofm
+      POSTGRES_DB: ofm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofm -d ofm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: ghcr.io/fernandogarzaaa/omfe:local
+    command: ["serve"]
+    environment:
+      <<: *app-env
+      SEED_DEMO: "true"
+      SEED_DEMO_ARGS: --known-passwords
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    restart: unless-stopped
+
+  worker:
+    build: .   # same image as app (cached); declared so `up --build` never tries to pull it
+    image: ghcr.io/fernandogarzaaa/omfe:local
+    command: ["worker"]
+    environment: *app-env
+    depends_on:
+      app:
+        condition: service_healthy   # app runs the migrations first
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest   # optional profile; pin a version for anything long-lived
+    profiles: ["n8n"]
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: UTC
+    volumes:
+      - n8ndata:/home/node/.n8n
+      - ./integrations/n8n:/import:ro   # import the bundled workflows from /import in the n8n UI
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  n8ndata:
