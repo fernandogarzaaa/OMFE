@@ -5,3 +5,4 @@ dist/
 coverage/
 reports/
 .stryker-tmp/
+.logs/
