@@ -68,8 +68,9 @@ def creator_out(c: Creator) -> dict[str, Any]:
 def score_reasons(breakdown: dict[str, Any]) -> list[str]:
     out = []
     for key, pts in sorted(breakdown.items(), key=lambda kv: -float(kv[1] or 0)):
-        if pts:
-            out.append(f"{'+' if float(pts) > 0 else ''}{float(pts):g} {_REASON_LABELS.get(key, key)}")
+        n = round(float(pts or 0))
+        if n:
+            out.append(f"{n:+d} {_REASON_LABELS.get(key, key)}")
     return out
 
 

@@ -166,3 +166,12 @@ def test_seed_demo_known_passwords_match_frontend_mock(monkeypatch):
 
     reset_settings_cache()
     assert CliRunner().invoke(cli_app, ["seed-demo", "--known-passwords"]).exit_code == 2
+
+
+def test_score_reasons_are_whole_points():
+    from ofm_engine.api.serializers import score_reasons
+
+    assert score_reasons({"audience": 30.75, "earnings": 0.2, "timezone": -5, "socials": 0}) == [
+        "+31 audience size",
+        "-5 target timezone",
+    ]

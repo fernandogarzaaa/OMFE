@@ -43,7 +43,7 @@ function describe(e: LiveEvent): string {
       if (p.stage) return `Lead moved ${p.from ? `${labelize(String(p.from))} → ` : 'to '}${labelize(String(p.stage))}`;
       return `${p.name ?? 'New applicant'}${p.score !== undefined ? ` · score ${p.score}` : ''}${p.tier ? ` · ${p.tier}` : ''}`;
     case 'capi_sent': return `${p.event_name ?? 'Event'} → ${labelize(String(p.provider ?? 'meta'))}${p.mode ? ` (${p.mode})` : ''}`;
-    case 'revenue_import': return `${p.imported ?? '?'} rows · ${money(Number(p.revenue_cents ?? 0))}`;
+    case 'revenue_import': return `${p.imported ?? '?'} row${p.imported === 1 ? '' : 's'} imported · ${money(Number(p.revenue_cents ?? 0))}`;
     case 'job_failed': return `${p.kind ?? 'Job'} failed — see Automations`;
     default: return String(e.type);
   }
