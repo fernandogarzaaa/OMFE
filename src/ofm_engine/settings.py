@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     allow_unsigned_ghl_webhooks_in_mock: bool = True
     outbound_allowed_hosts: list[str] = Field(default_factory=list)  # extra hosts for user webhooks
     outbound_allow_private: bool = False  # never enable in production
+    outbound_webhooks_live: bool = False  # mock by default: deliveries are signed + logged, not sent
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: SecretStr | None = None
     bootstrap_tenant: str = "demo-agency"
