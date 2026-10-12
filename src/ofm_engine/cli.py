@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 import time
@@ -292,13 +293,27 @@ def serve(
     )
 
 
+def alembic_ini() -> Path:
+    """Locate alembic.ini: $ALEMBIC_CONFIG, the source checkout, then the copy packaged in the wheel."""
+    here = Path(__file__).resolve().parent
+    candidates = [
+        Path(os.environ["ALEMBIC_CONFIG"]) if os.environ.get("ALEMBIC_CONFIG") else None,
+        here.parents[1] / "alembic.ini",  # repo checkout: <root>/src/ofm_engine/cli.py
+        here / "_migrations" / "alembic.ini",  # wheel / Docker image
+    ]
+    for c in candidates:
+        if c is not None and c.is_file():
+            return c
+    raise typer.BadParameter("alembic.ini not found (set ALEMBIC_CONFIG)")
+
+
 @app.command()
 def migrate(revision: Annotated[str, typer.Argument()] = "head") -> None:
     """Apply Alembic migrations (Postgres / production)."""
     from alembic import command
     from alembic.config import Config
 
-    ini = Path(__file__).resolve().parents[2] / "alembic.ini"
+    ini = alembic_ini()
     cfg = Config(str(ini))
     cfg.set_main_option("script_location", str(ini.parent / "alembic"))
     command.upgrade(cfg, revision)

@@ -58,17 +58,26 @@ dev = [
 ofm = "ofm_engine.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/fernandogarzaaa/ofm-engine"
+Homepage = "https://github.com/fernandogarzaaa/OMFE"
+Repository = "https://github.com/fernandogarzaaa/OMFE"
+Changelog = "https://github.com/fernandogarzaaa/OMFE/blob/main/CHANGELOG.md"
+
+[tool.hatch.build]
+# the built SPA is git-ignored; ship it anyway (build the frontend first: `make frontend`)
+artifacts = ["src/ofm_engine/web/dist/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ofm_engine"]
+exclude = ["**/__pycache__", "**/*.pyc"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"src/ofm_engine/web/dist" = "ofm_engine/web/dist"
+"alembic" = "ofm_engine/_migrations/alembic"
+"alembic.ini" = "ofm_engine/_migrations/alembic.ini"
 
 [tool.hatch.build.targets.sdist]
 include = ["src/ofm_engine", "alembic", "alembic.ini", "clients", "sequences", "integrations", "README.md", "LICENSE", "CHANGELOG.md"]
-exclude = ["src/ofm_engine/web/dist/.gitkeep"]
+exclude = ["src/ofm_engine/web/dist/.gitkeep", "**/__pycache__", "**/*.pyc"]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

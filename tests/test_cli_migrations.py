@@ -144,3 +144,21 @@ def test_cli_migrate_command(tmp_path, monkeypatch):
     reset_settings_cache()
     r = runner.invoke(cli_app, ["migrate"])
     assert r.exit_code == 0, r.output
+
+
+def test_alembic_ini_resolution(tmp_path, monkeypatch):
+    import pytest
+    import typer
+
+    from ofm_engine import cli
+
+    assert cli.alembic_ini() == ROOT / "alembic.ini"
+    (tmp_path / "cfg").mkdir()
+    custom = tmp_path / "cfg" / "alembic.ini"
+    custom.write_text("[alembic]\n")
+    monkeypatch.setenv("ALEMBIC_CONFIG", str(custom))
+    assert cli.alembic_ini() == custom
+    monkeypatch.setenv("ALEMBIC_CONFIG", str(tmp_path / "missing.ini"))
+    monkeypatch.setattr(cli, "__file__", str(tmp_path / "pkg" / "ofm_engine" / "cli.py"))
+    with pytest.raises(typer.BadParameter):
+        cli.alembic_ini()
