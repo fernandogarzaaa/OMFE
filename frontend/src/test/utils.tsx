@@ -18,7 +18,7 @@ export function renderApp(ui: ReactElement, { user = null as User | null, route 
   qc.setQueryData(ME_KEY, user);
   const utils = render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[route]}>
+      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <Routes>
             <Route path={path} element={ui} />
