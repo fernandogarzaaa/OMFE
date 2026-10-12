@@ -281,7 +281,7 @@ def serve(
         str,
         typer.Option(
             envvar="FORWARDED_ALLOW_IPS",
-            help="proxies trusted for X-Forwarded-For/Proto (comma list, or * behind a managed load balancer)",
+            help="proxies trusted for X-Forwarded-For/Proto (comma list; * behind a managed LB)",
         ),
     ] = "127.0.0.1",
 ) -> None:

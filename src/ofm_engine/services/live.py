@@ -108,8 +108,24 @@ def latest_seq(db: Session, tenant_id: uuid.UUID) -> int:
     return int(row or 0)
 
 
-def start_listeners() -> list[threading.Thread]:  # pragma: no cover - needs PG/Redis
-    """Start background listeners that translate PG NOTIFY / Redis messages into wake-ups."""
+_listeners: list[threading.Thread] = []
+_listeners_lock = threading.Lock()
+
+
+def start_listeners() -> list[threading.Thread]:
+    """Start background listeners that translate PG NOTIFY / Redis messages into wake-ups.
+
+    Idempotent per process: app factories can run many times (tests, reloads) but each
+    process needs exactly one listener per channel, each holding a single connection.
+    """
+    with _listeners_lock:
+        if any(t.is_alive() for t in _listeners):
+            return list(_listeners)
+        _listeners[:] = _spawn_listeners()
+        return list(_listeners)
+
+
+def _spawn_listeners() -> list[threading.Thread]:  # pragma: no cover - needs PG/Redis
     s = get_settings()
     threads: list[threading.Thread] = []
     if s.redis_url:

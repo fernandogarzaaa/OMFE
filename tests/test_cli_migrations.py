@@ -122,6 +122,29 @@ def test_migrations_no_drift_sqlite(tmp_path):
     assert _alembic(["downgrade", "base"], url).returncode == 0
 
 
+def test_migrations_no_drift_postgres():
+    """Runs only with TEST_DATABASE_URL (CI Postgres service): upgrade, autogenerate-check, downgrade."""
+    import pytest
+
+    pg = os.environ.get("TEST_DATABASE_URL", "")
+    if not pg.startswith("postgres"):
+        pytest.skip("TEST_DATABASE_URL not set")
+    import psycopg
+    from sqlalchemy.engine import make_url
+
+    base = make_url(pg)
+    admin = base.set(drivername="postgresql", database="postgres").render_as_string(hide_password=False)
+    with psycopg.connect(admin, autocommit=True) as conn:
+        conn.execute("DROP DATABASE IF EXISTS ofm_migration_check")
+        conn.execute("CREATE DATABASE ofm_migration_check")
+    url = base.set(database="ofm_migration_check").render_as_string(hide_password=False)
+    up = _alembic(["upgrade", "head"], url)
+    assert up.returncode == 0, up.stderr
+    check = _alembic(["check"], url)
+    assert check.returncode == 0, check.stdout + check.stderr
+    assert _alembic(["downgrade", "base"], url).returncode == 0
+
+
 def test_migrations_render_offline_postgres():
     out = _alembic(["upgrade", "head", "--sql"], "postgresql://u:p@localhost:5432/ofm")
     assert out.returncode == 0, out.stderr

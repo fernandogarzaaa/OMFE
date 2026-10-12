@@ -14,6 +14,27 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 PASSWORD = "Sup3r-Secret-Passw0rd!"
 
+# Set TEST_DATABASE_URL=postgresql://... to run the whole suite against a real Postgres (CI does).
+# Each test starts from empty tables (TRUNCATE ... RESTART IDENTITY), so SSE sequence ids match SQLite.
+PG_URL = os.environ.get("TEST_DATABASE_URL", "")
+_pg_schema_ready = False
+
+
+def _reset_postgres(dbmod):
+    global _pg_schema_ready
+    from sqlalchemy import text
+
+    from ofm_engine.models import Base
+
+    engine = dbmod.get_engine()
+    if not _pg_schema_ready:
+        Base.metadata.drop_all(engine)
+        dbmod.create_all()
+        _pg_schema_ready = True
+    names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
+
 
 @pytest.fixture(autouse=True)
 def _env(tmp_path, monkeypatch):
@@ -21,11 +42,14 @@ def _env(tmp_path, monkeypatch):
     from ofm_engine.services import kpis
     from ofm_engine.settings import reset_settings_cache
 
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.setenv("DATABASE_URL", PG_URL or f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("CLIENTS_DIR", str(tmp_path / "clients"))
     reset_settings_cache()
     dbmod.dispose_engine()
-    dbmod.create_all()
+    if PG_URL:
+        _reset_postgres(dbmod)
+    else:
+        dbmod.create_all()
     kpis._cache.clear()
     yield
     dbmod.dispose_engine()
