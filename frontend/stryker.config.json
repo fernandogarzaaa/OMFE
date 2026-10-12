@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "vitest",
-  "vitest": { "configFile": "vitest.stryker.config.ts", "related": false },
+  "vitest": { "configFile": "vitest.stryker.config.ts" },
   "mutate": ["src/lib/api.ts"],
   "reporters": ["json", "clear-text"],
   "concurrency": 2,
