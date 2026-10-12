@@ -125,7 +125,7 @@ flowchart LR
   A --> P
   F --> P
   S <--> API
-  S <-- events --> SSE
+  SSE -- "live events" --> S
   T -- "X-API-Key / signed inbound" --> API
   P --> DB
   API --> DB
@@ -136,7 +136,7 @@ flowchart LR
   W --> GHL & META & TT & HOOK
   API --> LLM
   DB -- "LISTEN/NOTIFY" --> SSE
-  R -. "rate limits + pub/sub" .- API
+  API -.->|"rate limits + pub/sub"| R
   HOOK -- "signed X-OFM-Signature" --> T
 ```
 

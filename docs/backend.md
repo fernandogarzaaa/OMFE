@@ -5,7 +5,7 @@
 uv venv && uv pip install -e ".[dev]"
 ofm seed-demo                      # demo tenant + admin@demo.agency / member@demo.agency (passwords printed; --known-passwords = demo-pass-2026)
 RUN_WORKER_IN_PROCESS=true ofm serve
-open http://localhost:8000/apply/demo   # public funnel;  /  = dashboard (SPA)
+open http://localhost:8000/apply/demo   # public funnel;  / = landing, /app = dashboard (SPA)
 ofm seed-demo --stream             # synthetic live events for the dashboard
 scripts/smoke.sh                   # end-to-end smoke test
 ```

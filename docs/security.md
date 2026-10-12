@@ -19,13 +19,13 @@ Vulnerabilities are reported privately — see [SECURITY.md](../SECURITY.md).
 
 ```mermaid
 flowchart LR
-  I((Internet:<br/>applicants, fans, bots)) -->|public pages, apply, /l| E[OFM Engine]
-  U((Agency users)) -->|cookie session + CSRF| E
-  T((n8n / Make / Zapier)) -->|X-API-Key, signed inbound| E
-  E -->|allowlisted hosts| P((GHL, Meta, TikTok, LLMs))
-  E -->|signed, SSRF-checked| H((Customer webhook URLs))
-  E --- D[(Postgres)]
-  K[[Env secrets]] --- E
+  I(("Internet: applicants, fans, bots")) -->|"public pages, apply, /l"| E["OFM Engine"]
+  U(("Agency users")) -->|"cookie session + CSRF"| E
+  T(("n8n / Make / Zapier")) -->|"X-API-Key, signed inbound"| E
+  E -->|"allowlisted hosts"| P(("GHL, Meta, TikTok, LLMs"))
+  E -->|"signed, SSRF-checked"| H(("Customer webhook URLs"))
+  E --- D[("Postgres")]
+  K[["Env secrets"]] --- E
 ```
 
 | Actor | Goals | Primary controls |
