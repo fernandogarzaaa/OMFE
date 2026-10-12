@@ -66,7 +66,7 @@ def mock_handler(request: httpx.Request) -> httpx.Response:
     """In-process emulation of the GHL endpoints we use (deterministic, offline)."""
     path = request.url.path
     body: dict[str, Any] = json.loads(request.content or b"{}") if request.content else {}
-    if not request.headers.get("Version"):
+    if not request.headers.get("Version") and not path.startswith("/hooks/"):
         return httpx.Response(400, json={"message": "Version header required"})
     if path == "/contacts/upsert" and request.method == "POST":
         key = body.get("email") or body.get("phone") or body.get("name", "")
