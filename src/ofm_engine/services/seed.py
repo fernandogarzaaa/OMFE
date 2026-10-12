@@ -20,6 +20,11 @@ from ..tenant_config import build_config
 from .live import record_activity
 
 DEMO_SLUG = "demo"
+DEMO_ADMIN_EMAIL = "admin@demo.agency"
+DEMO_MEMBER_EMAIL = "member@demo.agency"
+# Shared with the frontend's in-browser mock (frontend/src/mock/db.ts). Only usable via
+# `ofm seed-demo --known-passwords`, which refuses to run when ENV=production.
+DEMO_KNOWN_PASSWORD = "demo-pass-2026"  # noqa: S105 - documented demo credential
 CHANNELS = ("instagram", "tiktok", "reddit", "x")
 
 
@@ -66,8 +71,8 @@ def seed_demo(
     tenant, created = ensure_tenant(db, slug, cfg.name)
     passwords: dict[str, str] = {}
     for email, role, name, pw in (
-        ("admin@example.com", "admin", "Demo Admin", admin_password),
-        ("member@example.com", "member", "Demo Member", member_password),
+        (DEMO_ADMIN_EMAIL, "admin", "Demo Admin", admin_password),
+        (DEMO_MEMBER_EMAIL, "member", "Demo Member", member_password),
     ):
         got = _user(db, tenant, email, role, name, pw)
         if got:

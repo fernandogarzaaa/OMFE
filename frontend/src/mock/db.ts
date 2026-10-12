@@ -10,11 +10,13 @@ export const pick = <T,>(a: T[]): T => a[Math.floor(rand() * a.length)];
 export const uid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 
-export const TENANT = { id: 't_demo', name: 'Northstar Talent' };
+// Same credentials as `ofm seed-demo --known-passwords` (src/ofm_engine/services/seed.py).
+export const DEMO_PASSWORD = 'demo-pass-2026';
+export const TENANT = { id: 't_demo', name: 'Northstar Talent', slug: 'demo' };
 export const DEMO_USERS: (User & { password: string })[] = [
-  { id: 'u_admin', email: 'admin@demo.agency', name: 'Alex Rivera', role: 'admin', tenant: TENANT, totp_enabled: false, password: 'demo1234' },
-  { id: 'u_owner', email: 'owner@demo.agency', name: 'Sam Okafor', role: 'admin', tenant: TENANT, totp_enabled: true, password: 'demo1234' },
-  { id: 'u_member', email: 'member@demo.agency', name: 'Jordan Lee', role: 'member', tenant: TENANT, totp_enabled: false, password: 'demo1234' },
+  { id: 'u_admin', email: 'admin@demo.agency', name: 'Alex Rivera', role: 'admin', tenant: TENANT, totp_enabled: false, password: DEMO_PASSWORD },
+  { id: 'u_owner', email: 'owner@demo.agency', name: 'Sam Okafor', role: 'admin', tenant: TENANT, totp_enabled: true, password: DEMO_PASSWORD },
+  { id: 'u_member', email: 'member@demo.agency', name: 'Jordan Lee', role: 'member', tenant: TENANT, totp_enabled: false, password: DEMO_PASSWORD },
 ];
 export const DEMO_TOTP = '123456';
 
@@ -99,32 +101,37 @@ function init() {
   })));
   const revenue: RevenueRow[] = [];
   for (let d = 0; d < 21; d++) for (const c of creators.filter((x) => x.status === 'active')) {
-    revenue.push({ id: uid('rv'), creator_id: c.id, date: daysAgo(d).slice(0, 10), amount_cents: Math.round(400 + rand() * 2200) * 100, subs: Math.round(rand() * 40), source: 'csv' });
+    const gross = Math.round(400 + rand() * 2200) * 100;
+    revenue.push({ id: uid('rv'), creator_id: c.id, date: daysAgo(d).slice(0, 10), campaign: 'statement', gross_cents: gross, net_cents: Math.round(gross * 0.8), revenue_cents: gross, new_subs: Math.round(rand() * 40), source_file: 'of-statement.csv', created_at: daysAgo(d) });
   }
-  const users: TeamUser[] = DEMO_USERS.map(({ id, email, name, role, totp_enabled }) => ({ id, email, name, role, totp_enabled, created_at: daysAgo(120) }));
+  const users: TeamUser[] = DEMO_USERS.map(({ id, email, name, role, totp_enabled }) => ({ id, email, name, role, totp_enabled, is_active: true, created_at: daysAgo(120), last_login_at: daysAgo(1) }));
   const webhooks: Webhook[] = [
-    { id: 'wh_1', url: 'https://hooks.zapier.com/hooks/catch/123/abc', events: ['lead.created', 'lead.stage_changed'], created_at: daysAgo(12) },
-    { id: 'wh_2', url: 'https://n8n.northstar.io/webhook/revenue', events: ['revenue.imported'], created_at: daysAgo(3) },
+    { id: 'wh_1', url: 'https://hooks.zapier.com/hooks/catch/123/abc', events: ['lead.created', 'lead.stage_changed'], active: true, created_at: daysAgo(12) },
+    { id: 'wh_2', url: 'https://n8n.northstar.io/webhook/revenue', events: ['revenue.imported'], active: true, created_at: daysAgo(3) },
   ];
+  const job = (id: string, kind: string, status: Job['status'], attempts: number, ago: number, last_error: string | null = null): Job =>
+    ({ id, kind, status, attempts, max_attempts: 8, last_error, run_after: daysAgo(ago), created_at: daysAgo(ago), updated_at: daysAgo(ago) });
   const jobs: Job[] = [
-    { id: 'job_1', kind: 'ghl.sync_contact', status: 'done', attempts: 1, created_at: daysAgo(0.01) },
-    { id: 'job_2', kind: 'capi.send_event', status: 'running', attempts: 1, created_at: daysAgo(0.005) },
-    { id: 'job_3', kind: 'webhook.deliver', status: 'queued', attempts: 0, created_at: daysAgo(0.002) },
-    { id: 'job_4', kind: 'tiktok.send_event', status: 'failed', attempts: 3, created_at: daysAgo(0.2), last_error: 'HTTP 429 rate limited' },
-    { id: 'job_5', kind: 'lead.score', status: 'done', attempts: 1, created_at: daysAgo(0.3) },
+    job('job_1', 'ghl.upsert_lead', 'succeeded', 1, 0.01),
+    job('job_2', 'meta_capi.send', 'running', 1, 0.005),
+    job('job_3', 'webhook.deliver', 'queued', 0, 0.002),
+    job('job_4', 'tiktok.send', 'dead', 8, 0.2, 'HTTP 429 rate limited'),
+    job('job_5', 'lead.ai_score', 'succeeded', 1, 0.3),
   ];
-  const apiKeys: ApiKey[] = [{ id: 'key_1', name: 'Make.com scenario', prefix: 'ofm_live_7Hk2', created_at: daysAgo(30), last_used_at: daysAgo(0.1) }];
+  const apiKeys: ApiKey[] = [{ id: 'key_1', name: 'Make.com scenario', prefix: 'ofm_7Hk2xQ', role: 'member', created_at: daysAgo(30), last_used_at: daysAgo(0.1), revoked: false }];
+  const f = (name: string, set: boolean, required = false, secret = false) => ({ name, set, required, secret });
   const integrations: Integration[] = [
-    { provider: 'ghl', configured: true, mode: 'live', fields: [{ name: 'api_key', set: true }, { name: 'location_id', set: true }] },
-    { provider: 'meta_capi', configured: true, mode: 'mock', fields: [{ name: 'pixel_id', set: true }, { name: 'access_token', set: false }, { name: 'test_event_code', set: false }] },
-    { provider: 'tiktok', configured: false, mode: 'mock', fields: [{ name: 'pixel_code', set: false }, { name: 'access_token', set: false }] },
-    { provider: 'llm', configured: false, mode: 'mock', fields: [{ name: 'api_key', set: false }, { name: 'model', set: false }] },
+    // Field names match the backend (services/integrations.py).
+    { provider: 'ghl', configured: true, mode: 'live', fields: [f('token', true, true, true), f('location_id', true, true), f('pipeline_id', true), f('workflow_id', false), f('workflow_webhook_url', false, false, true)] },
+    { provider: 'meta_capi', configured: false, mode: 'mock', fields: [f('access_token', false, true, true), f('pixel_id', true, true), f('test_event_code', false)] },
+    { provider: 'tiktok', configured: false, mode: 'mock', fields: [f('access_token', false, true, true), f('pixel_code', false, true), f('test_event_code', false)] },
+    { provider: 'llm', configured: false, mode: 'mock', fields: [f('anthropic_api_key', false, false, true), f('openai_api_key', false, false, true)] },
   ];
   const audit: AuditEntry[] = [
     ['admin@demo.agency', 'auth.login', 'session', 0.02], ['admin@demo.agency', 'integration.update', 'ghl', 1],
     ['member@demo.agency', 'link.create', 'luna-ig', 2], ['admin@demo.agency', 'api_key.create', 'Make.com scenario', 30],
     ['owner@demo.agency', 'user.invite', 'member@demo.agency', 60],
-  ].map(([actor, action, target, d], i) => ({ id: `au_${i}`, actor: String(actor), action: String(action), target: String(target), at: daysAgo(Number(d)), ip: '203.0.113.' + (10 + i) }));
+  ].map(([actor, action, target, d], i) => ({ id: `au_${i}`, actor_id: null, actor_type: 'user', actor: String(actor), action: String(action), target: String(target), meta: {}, created_at: daysAgo(Number(d)) }));
   const kpis = { '7d': buildKpis(7, creators), '30d': buildKpis(30, creators), '90d': buildKpis(90, creators) };
   return { creators, leads, links, revenue, users, webhooks, jobs, apiKeys, integrations, audit, kpis, nextLead: 100 };
 }

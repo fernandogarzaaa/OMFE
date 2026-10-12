@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
 import { ME_KEY, useAuth } from '../auth/AuthContext';
 import { RequireRole } from '../auth/guards';
-import { Badge, Button, Card, cx, Empty, ErrorNote, Field, Input, Modal, PageHeader, Select, Spinner, useConfirm } from '../components/ui';
+import { Badge, Button, Card, cx, Empty, ErrorNote, Field, Input, Modal, PageHeader, SecretOnce, Select, Spinner, useConfirm } from '../components/ui';
 import { api, itemsOf } from '../lib/api';
 import { dateTime, labelize } from '../lib/format';
 import type { Integration, IntegrationTest, Provider, Role, User, UserInput } from '../lib/types';
@@ -35,9 +35,9 @@ export function IntegrationCard({ it }: { it: Integration }) {
       <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-3">
         <p className="text-sm text-slate-400">{meta.blurb}</p>
         {it.fields.map((f) => (
-          <Field key={f.name} label={labelize(f.name)} hint={f.set ? 'Saved — leave blank to keep the current value' : 'Not set'}>{(id) => (
+          <Field key={f.name} label={`${labelize(f.name)}${f.required === false ? ' (optional)' : ''}`} hint={f.set ? 'Saved — leave blank to keep the current value' : 'Not set'}>{(id) => (
             <div className="relative">
-              <Input id={id} type={SECRETISH.test(f.name) ? 'password' : 'text'} autoComplete="off" value={values[f.name] ?? ''}
+              <Input id={id} type={(f.secret ?? SECRETISH.test(f.name)) ? 'password' : 'text'} autoComplete="off" value={values[f.name] ?? ''}
                 placeholder={f.set ? '••••••••  (set)' : ''} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))} className="pr-16" />
               <span className={cx('pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold uppercase', f.set ? 'text-emerald-400' : 'text-slate-500')}>{f.set ? 'Set' : 'Unset'}</span>
             </div>)}
@@ -79,15 +79,17 @@ function Team() {
   const { data, isLoading, error } = useQuery({ queryKey: ['users'], queryFn: () => api.users.list() });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<UserInput>({ email: '', name: '', role: 'member', password: '' });
+  const [tempPw, setTempPw] = useState<string | null>(null);
   const create = useMutation({
     mutationFn: () => api.users.create({ ...form, password: form.password || undefined }),
-    onSuccess: () => { setOpen(false); setForm({ email: '', name: '', role: 'member', password: '' }); void qc.invalidateQueries({ queryKey: ['users'] }); },
+    onSuccess: (u) => { setOpen(false); setTempPw(u.temporary_password ?? null); setForm({ email: '', name: '', role: 'member', password: '' }); void qc.invalidateQueries({ queryKey: ['users'] }); },
   });
   const update = useMutation({ mutationFn: ({ id, role }: { id: string; role: Role }) => api.users.update(id, { role }), onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }) });
   const remove = useMutation({ mutationFn: api.users.remove, onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }) });
   const users = itemsOf(data);
   return (
     <Card title="Team" action={<Button size="sm" onClick={() => { create.reset(); setOpen(true); }}><UserPlus className="h-3.5 w-3.5" aria-hidden /> Add user</Button>} bodyClass="p-0">
+      {tempPw && <div className="p-4"><SecretOnce title="Temporary password (shown once)" value={tempPw} onDone={() => setTempPw(null)} /></div>}
       {(error || update.error || remove.error) && <div className="p-4"><ErrorNote error={error || update.error || remove.error} /></div>}
       {isLoading ? <Spinner /> : users.length === 0 ? <div className="p-5"><Empty title="No users" /></div> : (
         <div className="overflow-x-auto">
@@ -117,7 +119,7 @@ function Team() {
           <Field label="Name">{(id) => <Input id={id} required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />}</Field>
           <Field label="Email">{(id) => <Input id={id} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />}</Field>
           <Field label="Role">{(id) => <Select id={id} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}><option value="member">Member</option><option value="admin">Admin</option></Select>}</Field>
-          <Field label="Temporary password" hint="Min 12 characters. They should change it after first sign-in.">{(id) => <Input id={id} type="password" autoComplete="new-password" minLength={12} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />}</Field>
+          <Field label="Temporary password" hint="Optional, min 12 characters. Leave blank to generate one (shown once).">{(id) => <Input id={id} type="password" autoComplete="new-password" minLength={12} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />}</Field>
           <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" loading={create.isPending} disabled={!form.name || !form.email}>Add user</Button></div>
         </form>
       </Modal>
@@ -184,10 +186,10 @@ function Audit() {
       {isLoading ? <Spinner /> : rows.length === 0 ? <div className="p-5"><Empty title="No audit entries" /></div> : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[620px]">
-            <thead><tr className="border-b border-white/[0.06]"><th className="th">When</th><th className="th">Actor</th><th className="th">Action</th><th className="th">Target</th><th className="th">IP</th></tr></thead>
+            <thead><tr className="border-b border-white/[0.06]"><th className="th">When</th><th className="th">Actor</th><th className="th">Action</th><th className="th">Target</th></tr></thead>
             <tbody className="divide-y divide-white/[0.04]">
               {rows.map((a) => (
-                <tr key={a.id}><td className="td whitespace-nowrap text-slate-400">{dateTime(a.at)}</td><td className="td">{a.actor}</td><td className="td"><code className="font-mono text-xs text-brand-300">{a.action}</code></td><td className="td text-slate-300">{a.target ?? '—'}</td><td className="td font-mono text-xs text-slate-500">{a.ip ?? '—'}</td></tr>
+                <tr key={a.id}><td className="td whitespace-nowrap text-slate-400">{dateTime(a.created_at)}</td><td className="td">{a.actor}</td><td className="td"><code className="font-mono text-xs text-brand-300">{a.action}</code></td><td className="td max-w-[220px] truncate font-mono text-xs text-slate-400" title={a.target}>{a.target || '—'}</td></tr>
               ))}
             </tbody>
           </table>

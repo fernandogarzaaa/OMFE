@@ -11,8 +11,10 @@ import type { RevenueImportResult, RevenueMapping } from '../lib/types';
 const TARGETS: { key: keyof RevenueMapping; label: string; required: boolean }[] = [
   { key: 'date', label: 'Date', required: true },
   { key: 'creator', label: 'Creator (name, handle or id)', required: true },
-  { key: 'amount', label: 'Amount (USD)', required: true },
-  { key: 'subs', label: 'Subscribers', required: false },
+  { key: 'gross', label: 'Gross amount (USD)', required: true },
+  { key: 'net', label: 'Net amount (optional — defaults to 80% of gross)', required: false },
+  { key: 'new_subs', label: 'New subscribers', required: false },
+  { key: 'campaign', label: 'Campaign', required: false },
 ];
 
 export function CsvImporter({ onImported }: { onImported?: (r: RevenueImportResult) => void }) {
@@ -77,7 +79,8 @@ export function CsvImporter({ onImported }: { onImported?: (r: RevenueImportResu
             {imp.error && <ErrorNote error={imp.error} />}
             {imp.data && (
               <p role="status" className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-sm text-emerald-200">
-                Imported {num(imp.data.imported)} rows{imp.data.skipped ? `, skipped ${num(imp.data.skipped)}` : ''}.{imp.data.errors?.length ? ` ${imp.data.errors.join(' ')}` : ''}
+                Imported {num(imp.data.imported)} rows ({money(imp.data.revenue_cents)}, {num(imp.data.subs)} subs){imp.data.skipped_duplicates ? `, skipped ${num(imp.data.skipped_duplicates)} duplicates` : ''}.
+                {imp.data.error_count > 0 && <span className="block text-amber-200">{num(imp.data.error_count)} row(s) had errors: {imp.data.errors.slice(0, 3).map((e) => `row ${e.row}: ${e.message}`).join('; ')}</span>}
               </p>
             )}
             <Button onClick={() => imp.mutate()} disabled={!ready} loading={imp.isPending}><Upload className="h-4 w-4" aria-hidden /> Import</Button>
@@ -98,7 +101,7 @@ export default function Revenue() {
     queryFn: () => api.revenue.list({ creator_id: creatorId || undefined, from: from || undefined, to: to || undefined, limit: 500 }),
   });
   const rows = itemsOf(data);
-  const totals = useMemo(() => rows.reduce((a, r) => ({ amount: a.amount + r.amount_cents, subs: a.subs + (r.subs || 0) }), { amount: 0, subs: 0 }), [rows]);
+  const totals = useMemo(() => rows.reduce((a, r) => ({ amount: a.amount + r.revenue_cents, subs: a.subs + (r.new_subs || 0) }), { amount: 0, subs: 0 }), [rows]);
 
   return (
     <>
@@ -118,7 +121,7 @@ export default function Revenue() {
                 <thead className="sticky top-0 bg-ink-900"><tr className="border-b border-white/[0.06]"><th className="th">Date</th><th className="th">Creator</th><th className="th text-right">Subs</th><th className="th text-right">Amount</th></tr></thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {rows.map((r) => (
-                    <tr key={r.id}><td className="td text-slate-400">{date(r.date)}</td><td className="td">{nameOf(r.creator_id)}</td><td className="td text-right tabular-nums">{num(r.subs)}</td><td className="td text-right tabular-nums text-white">{money(r.amount_cents)}</td></tr>
+                    <tr key={r.id}><td className="td text-slate-400">{date(r.date)}</td><td className="td">{nameOf(r.creator_id)}</td><td className="td text-right tabular-nums">{num(r.new_subs)}</td><td className="td text-right tabular-nums text-white">{money(r.revenue_cents)}</td></tr>
                   ))}
                 </tbody>
               </table>

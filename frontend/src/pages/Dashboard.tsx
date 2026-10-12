@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { DollarSign, MousePointerClick, Send, Upload, UserPlus, UserCheck, Users } from 'lucide-react';
+import { AlertTriangle, DollarSign, MousePointerClick, Send, Upload, UserPlus, UserCheck, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -28,19 +28,24 @@ function Tile({ label, value, sub, icon: Icon }: { label: string; value: string;
   );
 }
 
-const EVENT_META: Record<LiveEvent['type'], { icon: typeof Users; tone: 'blue' | 'green' | 'violet' | 'amber'; label: string }> = {
+const EVENT_META: Record<LiveEvent['type'], { icon: typeof Users; tone: 'blue' | 'green' | 'violet' | 'amber' | 'red'; label: string }> = {
   click: { icon: MousePointerClick, tone: 'blue', label: 'Click' },
   lead: { icon: UserPlus, tone: 'green', label: 'New lead' },
   capi_sent: { icon: Send, tone: 'violet', label: 'CAPI event' },
   revenue_import: { icon: Upload, tone: 'amber', label: 'Revenue import' },
+  job_failed: { icon: AlertTriangle, tone: 'red', label: 'Job failed' },
 };
 function describe(e: LiveEvent): string {
   const p = e.payload as Record<string, string | number | undefined>;
   switch (e.type) {
     case 'click': return `${p.slug ? `/${p.slug}` : 'Link'}${p.channel ? ` · ${labelize(String(p.channel))}` : ''}${p.creator ? ` · ${p.creator}` : ''}`;
-    case 'lead': return `${p.name ?? 'Applicant'}${p.score !== undefined ? ` · score ${p.score}` : ''}`;
-    case 'capi_sent': return `${p.event_name ?? 'Event'} → ${labelize(String(p.provider ?? 'meta'))}`;
-    case 'revenue_import': return `${p.rows ?? '?'} rows from ${p.file ?? 'CSV'}`;
+    case 'lead':
+      if (p.stage) return `Lead moved ${p.from ? `${labelize(String(p.from))} → ` : 'to '}${labelize(String(p.stage))}`;
+      return `${p.name ?? 'New applicant'}${p.score !== undefined ? ` · score ${p.score}` : ''}${p.tier ? ` · ${p.tier}` : ''}`;
+    case 'capi_sent': return `${p.event_name ?? 'Event'} → ${labelize(String(p.provider ?? 'meta'))}${p.mode ? ` (${p.mode})` : ''}`;
+    case 'revenue_import': return `${p.imported ?? '?'} rows · ${money(Number(p.revenue_cents ?? 0))}`;
+    case 'job_failed': return `${p.kind ?? 'Job'} failed — see Automations`;
+    default: return String(e.type);
   }
 }
 

@@ -27,6 +27,9 @@ from ..serializers import iso, revenue_out
 
 router = APIRouter(tags=["data"])
 
+# Friendly aliases accepted in the import mapping (canonical keys: see RevenueMapping).
+MAPPING_ALIASES = {"amount": "gross", "subs": "new_subs"}
+
 
 @router.post("/revenue/import")
 async def import_revenue(
@@ -42,9 +45,13 @@ async def import_revenue(
         if not isinstance(raw_map, dict):
             raise ValueError("mapping must be a JSON object")
         base = tenant_ctx(db, p).config.revenue_mapping.model_dump()
-        cfg = RevenueMapping.model_validate(
-            {**base, **{k: v for k, v in raw_map.items() if v not in (None, "")}}
-        )
+        given: dict[str, Any] = {
+            str(MAPPING_ALIASES.get(str(k), str(k))): v for k, v in raw_map.items() if v not in (None, "")
+        }
+        unknown = sorted(set(given) - set(base))
+        if unknown:
+            raise ValueError(f"unknown mapping key(s) {unknown}; allowed {sorted(base)}")
+        cfg = RevenueMapping.model_validate({**base, **given})
     except (ValueError, ValidationError) as exc:
         raise ApiError(422, "invalid_mapping", f"mapping: {str(exc)[:200]}") from exc
     try:

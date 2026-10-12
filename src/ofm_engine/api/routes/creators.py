@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Request
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from ...db import get_db
 from ...models import Creator, utcnow
-from ...services import audit
+from ...services import audit, jobs
 from ..deps import Principal, client_ip, parse_uuid, require_admin, require_member
 from ..errors import ApiError, not_found
 from ..pagination import paginate
@@ -157,7 +158,9 @@ def patch_creator(
         meta={"fields": sorted(data)},
         ip=client_ip(request),
     )
-    return creator_out(c)
+    out = creator_out(c)
+    jobs.emit_event(db, p.tenant_id, "creator.updated", {**out, "changed": sorted(data)}, uuid.uuid4().hex)
+    return out
 
 
 @router.delete("/{creator_id}")

@@ -137,6 +137,7 @@ export const api = {
     login: (email: string, password: string, totp?: string) =>
       post<{ user: User }>('/auth/login', totp ? { email, password, totp } : { email, password }),
     refresh: refreshSession,
+    refreshUser: () => post<{ user: User }>('/auth/refresh'),
     logout: () => post<void>('/auth/logout'),
     me: () => get<User>('/auth/me'),
     totpSetup: () => post<{ otpauth_uri: string }>('/auth/totp/setup'),
@@ -184,11 +185,11 @@ export const api = {
     createWebhook: (url: string, events: string[]) => post<WebhookCreated>('/automations/webhooks', { url, events }),
     deleteWebhook: (id: string) => del(`/automations/webhooks/${id}`),
     jobs: (status?: JobStatus) => get<Page<Job>>('/automations/jobs', { status }),
+    retryJob: (id: string) => post<Job>(`/automations/jobs/${id}/retry`),
   },
   apiKeys: {
     list: () => get<Page<ApiKey>>('/api-keys'),
     create: (name: string) => post<ApiKeyCreated>('/api-keys', { name }),
-    // assumed: DELETE /api-keys/{id}
     remove: (id: string) => del(`/api-keys/${id}`),
   },
   ai: {

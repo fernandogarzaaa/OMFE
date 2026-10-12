@@ -26,6 +26,17 @@ describe('applyKpiDelta', () => {
     expect(n.by_channel.map((c) => c.channel)).toEqual(['tiktok', 'x']);
     expect(K.clicks).toBe(100); // pure
   });
+  it('treats a backend-shaped kpi event (all five counters, zeros included) as increments', () => {
+    // exactly what api/routes/data.py `_kpi_delta` emits after a batch of 2 clicks + 1 signed lead
+    const wire = JSON.parse('{"clicks":2,"leads":0,"signed":1,"subs":0,"revenue_cents":0}');
+    const once = applyKpiDelta(K, wire);
+    expect([once.clicks, once.leads, once.signed, once.subs, once.revenue_cents]).toEqual([102, 10, 2, 5, 10000]);
+    // two consecutive batches accumulate (not replace)
+    const twice = applyKpiDelta(once, wire);
+    expect(twice.clicks).toBe(104);
+    expect(twice.signed).toBe(3);
+    expect(twice.by_channel).toEqual(K.by_channel); // breakdowns untouched when absent
+  });
 });
 
 describe('csv', () => {
@@ -33,7 +44,7 @@ describe('csv', () => {
     expect(parseCsv('a,b\r\n"x, y","he said ""hi"""\r\n')).toEqual([['a', 'b'], ['x, y', 'he said "hi"']]);
   });
   it('guesses a column mapping', () => {
-    expect(guessMapping(['Transaction Date', 'Model', 'Net Earnings', 'New Subs'])).toEqual({ date: 'Transaction Date', creator: 'Model', amount: 'Net Earnings', subs: 'New Subs' });
+    expect(guessMapping(['Transaction Date', 'Model', 'Net Earnings', 'New Subs'])).toEqual({ date: 'Transaction Date', creator: 'Model', gross: 'Net Earnings', new_subs: 'New Subs' });
   });
 });
 

@@ -78,7 +78,7 @@ export default function Login() {
         </form>
         {IS_MOCK && (
           <p className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-100/80">
-            Demo mode: <b>admin@demo.agency</b> or <b>member@demo.agency</b> (password <b>demo1234</b>). <b>owner@demo.agency</b> has 2FA — code <b>123456</b>.
+            Demo mode: <b>admin@demo.agency</b> or <b>member@demo.agency</b> (password <b>demo-pass-2026</b>, same as <code>ofm seed-demo --known-passwords</code>). <b>owner@demo.agency</b> has 2FA — code <b>123456</b> (mock only).
           </p>
         )}
       </div>

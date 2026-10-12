@@ -4,10 +4,10 @@ import { useState, type FormEvent } from 'react';
 import { Badge, Button, Card, Empty, ErrorNote, Field, Input, PageHeader, SecretOnce, Spinner, Tabs, useConfirm, type Tone } from '../components/ui';
 import { api, itemsOf } from '../lib/api';
 import { dateTime, labelize, timeAgo } from '../lib/format';
-import type { JobStatus } from '../lib/types';
+import { WEBHOOK_EVENT_NAMES, type JobStatus } from '../lib/types';
 
-export const WEBHOOK_EVENTS = ['lead.created', 'lead.stage_changed', 'link.clicked', 'revenue.imported', 'creator.updated'];
-const JOB_TONE: Record<JobStatus, Tone> = { queued: 'slate', running: 'blue', done: 'green', failed: 'red' };
+export const WEBHOOK_EVENTS: string[] = [...WEBHOOK_EVENT_NAMES];
+const JOB_TONE: Record<JobStatus, Tone> = { queued: 'slate', running: 'blue', retry: 'amber', succeeded: 'green', dead: 'red' };
 
 function Webhooks() {
   const qc = useQueryClient();
@@ -67,10 +67,12 @@ function Webhooks() {
 function Jobs() {
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   const { data, isLoading, error } = useQuery({ queryKey: ['jobs', status], queryFn: () => api.automations.jobs(status === 'all' ? undefined : status), refetchInterval: 5000 });
+  const qc = useQueryClient();
+  const retry = useMutation({ mutationFn: api.automations.retryJob, onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) });
   const jobs = itemsOf(data);
   return (
-    <Card title="Job queue" action={<Tabs label="Job status" value={status} onChange={setStatus} tabs={[{ key: 'all', label: 'All' }, { key: 'queued', label: 'Queued' }, { key: 'running', label: 'Running' }, { key: 'failed', label: 'Failed' }, { key: 'done', label: 'Done' }]} />} bodyClass="p-0">
-      {error && <div className="p-4"><ErrorNote error={error} /></div>}
+    <Card title="Job queue" action={<Tabs label="Job status" value={status} onChange={setStatus} tabs={[{ key: 'all', label: 'All' }, { key: 'queued', label: 'Queued' }, { key: 'running', label: 'Running' }, { key: 'retry', label: 'Retrying' }, { key: 'dead', label: 'Dead' }, { key: 'succeeded', label: 'Done' }]} />} bodyClass="p-0">
+      {(error || retry.error) && <div className="p-4"><ErrorNote error={error || retry.error} /></div>}
       {isLoading ? <Spinner /> : jobs.length === 0 ? <div className="p-5"><Empty title="Queue is empty" /></div> : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px]">
@@ -80,7 +82,7 @@ function Jobs() {
                 <tr key={j.id}>
                   <td className="td"><p className="font-mono text-sm text-slate-200">{j.kind}</p>{j.last_error && <p className="text-xs text-rose-300">{j.last_error}</p>}</td>
                   <td className="td"><Badge tone={JOB_TONE[j.status] ?? 'slate'}>{labelize(j.status)}</Badge></td>
-                  <td className="td tabular-nums">{j.attempts}</td>
+                  <td className="td tabular-nums">{j.attempts}/{j.max_attempts}{(j.status === 'dead' || j.status === 'retry') && <Button size="sm" variant="ghost" className="ml-2" onClick={() => retry.mutate(j.id)} aria-label={`Retry job ${j.kind}`}>Retry</Button>}</td>
                   <td className="td text-slate-400" title={dateTime(j.created_at)}>{timeAgo(j.created_at)}</td>
                 </tr>
               ))}

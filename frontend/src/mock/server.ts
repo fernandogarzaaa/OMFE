@@ -20,7 +20,7 @@ function currentUser() {
   return user;
 }
 function audit(action: string, target?: string) {
-  db.audit.unshift({ id: uid('au'), actor: currentUser()?.email ?? 'system', action, target, at: new Date().toISOString(), ip: '127.0.0.1' });
+  db.audit.unshift({ id: uid('au'), actor_id: currentUser()?.id ?? null, actor_type: 'user', actor: currentUser()?.email ?? 'system', action, target: target ?? '', meta: {}, created_at: new Date().toISOString() });
 }
 const STAGE_LABEL: Record<LeadStage, string> = { new: 'New', contacted: 'Contacted', call_booked: 'Call booked', signed: 'Signed', lost: 'Lost' };
 
@@ -49,11 +49,11 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     audit('auth.login', 'session');
     return json(200, { user: currentUser() });
   }
-  if (path === '/auth/refresh') return currentUser() ? json(200, {}) : err(401, 'unauthenticated');
+  if (path === '/auth/refresh') return currentUser() ? json(200, { user: currentUser() }) : err(401, 'unauthorized');
   if (path === '/auth/logout') { sessionStorage.removeItem(SESSION_KEY); return json(204); }
 
   const me = currentUser();
-  if (!me) return err(401, 'unauthenticated', 'Please sign in');
+  if (!me) return err(401, 'unauthorized', 'Please sign in');
   const isAdmin = me.role === 'admin';
   const adminOnly = () => err(403, 'forbidden', 'Admins only');
 
@@ -62,7 +62,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   if (path === '/auth/totp/verify') {
     if (body.code !== DEMO_TOTP) return err(400, 'invalid_totp', 'Code did not match — demo code is 123456');
     const u = DEMO_USERS.find((x) => x.id === me.id)!; u.totp_enabled = true; audit('auth.totp_enabled');
-    return json(200, { ok: true });
+    return json(200, { ok: true, totp_enabled: true });
   }
 
   // --- users ---
@@ -70,8 +70,11 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (!isAdmin) return adminOnly();
     if (method === 'GET') return json(200, page(db.users));
     if (method === 'POST') {
-      const u = { id: uid('u'), email: String(body.email), name: String(body.name), role: body.role === 'admin' ? 'admin' as const : 'member' as const, totp_enabled: false, created_at: new Date().toISOString() };
-      db.users.push(u); audit('user.create', u.email); return json(201, u);
+      if (db.users.some((x) => x.email === String(body.email).toLowerCase())) return err(409, 'email_taken', 'A user with that email already exists');
+      if (body.password && String(body.password).length < 12) return err(422, 'weak_password', 'Password must be at least 12 characters');
+      const u = { id: uid('u'), email: String(body.email).toLowerCase(), name: String(body.name), role: body.role === 'admin' ? 'admin' as const : 'member' as const, totp_enabled: false, is_active: true, created_at: new Date().toISOString(), last_login_at: null };
+      db.users.push(u); audit('user.create', u.email);
+      return json(201, body.password ? u : { ...u, temporary_password: 'Tmp-' + Math.random().toString(36).slice(2, 14) });
     }
     const u = db.users.find((x) => x.id === seg[1]);
     if (!u) return err(404, 'not_found');
@@ -134,19 +137,28 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     const { parseCsv } = await import('../lib/csv');
     const rows = parseCsv(text);
     const head = rows.shift() ?? [];
-    const col = (k: string) => head.indexOf(mapping[k]);
-    let imported = 0; let skipped = 0;
-    for (const r of rows) {
-      const amount = parseFloat((r[col('amount')] ?? '').replace(/[$,]/g, ''));
+    const alias: Record<string, string> = { amount: 'gross', subs: 'new_subs' };
+    const m: Record<string, string> = { date: 'date', creator: 'creator', campaign: 'campaign', gross: 'gross', net: 'net', new_subs: 'new_subs' };
+    for (const [k, v] of Object.entries(mapping)) if (v) m[alias[k] ?? k] = String(v);
+    const col = (k: string) => head.indexOf(m[k]);
+    if (col('date') < 0 || col('gross') < 0) return err(422, 'invalid_csv', `column '${col('date') < 0 ? m.date : m.gross}' not found`);
+    let imported = 0; let revenue_cents = 0; let subs = 0;
+    const errors: { row: number; message: string }[] = [];
+    rows.forEach((r, i) => {
+      const gross = parseFloat((r[col('gross')] ?? '').replace(/[$,]/g, ''));
+      const date = r[col('date')] ?? '';
+      if (isNaN(gross) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { errors.push({ row: i + 2, message: 'invalid date or amount' }); return; }
       const cname = (r[col('creator')] ?? '').toLowerCase();
       const cr = db.creators.find((c) => c.handle.toLowerCase() === cname || c.name.toLowerCase() === cname || c.id === cname);
-      if (!cr || isNaN(amount)) { skipped++; continue; }
-      db.revenue.unshift({ id: uid('rv'), creator_id: cr.id, date: r[col('date')] ?? '', amount_cents: Math.round(amount * 100), subs: parseInt(r[col('subs')] ?? '0') || 0, source: 'csv' });
-      imported++;
-    }
+      const netRaw = parseFloat((r[col('net')] ?? '').replace(/[$,]/g, ''));
+      const ns = parseInt(r[col('new_subs')] ?? '0') || 0;
+      const g = Math.round(gross * 100);
+      db.revenue.unshift({ id: uid('rv'), creator_id: cr?.id ?? null, date, campaign: r[col('campaign')] ?? '', gross_cents: g, net_cents: isNaN(netRaw) ? Math.round(g * 0.8) : Math.round(netRaw * 100), revenue_cents: g, new_subs: ns, source_file: file.name, created_at: new Date().toISOString() });
+      imported++; revenue_cents += g; subs += ns;
+    });
     audit('revenue.import', file.name);
-    emit({ type: 'revenue_import', payload: { file: file.name, rows: imported }, at: new Date().toISOString() });
-    return json(200, { imported, skipped, errors: skipped ? [`${skipped} row(s) had an unknown creator or invalid amount`] : [] });
+    if (imported) emit({ type: 'revenue_import', payload: { type: 'revenue_import', imported, revenue_cents, subs }, at: new Date().toISOString() });
+    return json(200, { imported, skipped_duplicates: 0, errors: errors.slice(0, 50), error_count: errors.length, revenue_cents, subs });
   }
   if (path === '/revenue') {
     let rows = db.revenue;
@@ -161,20 +173,32 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   // --- automations / api keys ---
   if (path === '/automations/webhooks') {
     if (method === 'GET') return json(200, page(db.webhooks));
-    const id = uid('wh'); db.webhooks.unshift({ id, url: String(body.url), events: (body.events as string[]) ?? [], created_at: new Date().toISOString() });
-    audit('webhook.create', String(body.url));
-    return json(201, { id, secret: 'whsec_' + Array.from({ length: 32 }, () => pick([...'abcdef0123456789'])).join('') });
+    if (!isAdmin) return adminOnly();
+    if (!/^https:\/\//.test(String(body.url))) return err(422, 'unsafe_url', 'Webhook URL must be https and public');
+    const wh = { id: uid('wh'), url: String(body.url), events: [...new Set((body.events as string[]) ?? [])].sort(), active: true, created_at: new Date().toISOString() };
+    db.webhooks.unshift(wh);
+    audit('webhook.create', wh.id);
+    return json(201, { ...wh, secret: 'whsec_' + Array.from({ length: 32 }, () => pick([...'abcdef0123456789'])).join('') });
   }
-  if (seg[0] === 'automations' && seg[1] === 'webhooks' && seg[2] && method === 'DELETE') { db.webhooks = db.webhooks.filter((w) => w.id !== seg[2]); return json(204); }
+  if (seg[0] === 'automations' && seg[1] === 'webhooks' && seg[2] && method === 'DELETE') { if (!isAdmin) return adminOnly(); db.webhooks = db.webhooks.filter((w) => w.id !== seg[2]); return json(200, { ok: true }); }
+  if (seg[0] === 'automations' && seg[1] === 'jobs' && seg[3] === 'retry' && method === 'POST') {
+    const j = db.jobs.find((x) => x.id === seg[2]);
+    if (!j) return err(404, 'not_found');
+    if (j.status !== 'dead' && j.status !== 'retry') return err(409, 'not_retryable', 'Only dead or retrying jobs can be retried');
+    Object.assign(j, { status: 'queued', attempts: 0, last_error: null, updated_at: new Date().toISOString() });
+    return json(200, j);
+  }
   if (path === '/automations/jobs') { const st = q.get('status'); return json(200, page(st ? db.jobs.filter((j) => j.status === st) : db.jobs)); }
   if (seg[0] === 'api-keys') {
+    if (!isAdmin) return adminOnly();
     if (method === 'GET') return json(200, page(db.apiKeys));
     if (method === 'POST') {
-      const key = 'ofm_live_' + Array.from({ length: 40 }, () => pick([...'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'])).join('');
-      const k = { id: uid('key'), name: String(body.name || 'Untitled key'), prefix: key.slice(0, 13), created_at: new Date().toISOString(), last_used_at: null };
-      db.apiKeys.unshift(k); audit('api_key.create', k.name); return json(201, { id: k.id, name: k.name, key });
+      const prefix = 'ofm_' + Array.from({ length: 8 }, () => pick([...'abcdefghijkmnpqrstuvwxyz23456789'])).join('');
+      const key = prefix + '_' + Array.from({ length: 40 }, () => pick([...'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'])).join('');
+      const k = { id: uid('key'), name: String(body.name || 'Untitled key'), prefix, role: 'member' as const, created_at: new Date().toISOString(), last_used_at: null, revoked: false };
+      db.apiKeys.unshift(k); audit('api_key.create', k.id); return json(201, { ...k, key });
     }
-    if (method === 'DELETE') { db.apiKeys = db.apiKeys.filter((k) => k.id !== seg[1]); audit('api_key.revoke', seg[1]); return json(204); }
+    if (method === 'DELETE') { db.apiKeys = db.apiKeys.filter((k) => k.id !== seg[1]); audit('api_key.revoke', seg[1]); return json(200, { ok: true }); }
   }
 
   // --- AI copy ---
@@ -208,7 +232,10 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (method === 'PUT') {
       const fields = (body.fields ?? {}) as Record<string, string>;
       for (const f of it.fields) if (fields[f.name]) f.set = true;
-      it.configured = it.fields.filter((f) => !/test|model/.test(f.name)).every((f) => f.set);
+      const known = new Set(it.fields.map((f) => f.name));
+      const unknown = Object.keys(fields).filter((k) => !known.has(k));
+      if (unknown.length) return err(422, 'validation_error', `unknown field(s): ${unknown.join(', ')}`);
+      it.configured = it.provider === 'llm' ? it.fields.some((f) => f.set) : it.fields.filter((f) => f.required).every((f) => f.set);
       it.mode = it.configured ? 'live' : 'mock';
       audit('integration.update', it.provider);
       return json(200, it);
@@ -246,16 +273,17 @@ class MockEventSource implements LiveSource {
     const r = rand();
     const link = pick(db.links);
     const now = new Date().toISOString();
-    const delta: KpiDelta = { clicks: 1 + Math.floor(rand() * 4) };
-    link.clicks += delta.clicks!;
+    // Same shape as the backend's `kpi` event: all five counters, additive.
+    const delta: Required<Pick<KpiDelta, 'clicks' | 'leads' | 'signed' | 'subs' | 'revenue_cents'>> = { clicks: 1 + Math.floor(rand() * 4), leads: 0, signed: 0, subs: 0, revenue_cents: 0 };
+    link.clicks += delta.clicks;
     const cr = db.creators.find((c) => c.id === link.creator_id);
-    this.dispatch('event', { type: 'click', payload: { slug: link.slug, channel: link.channel, creator: cr?.name }, at: now });
+    this.dispatch('event', { type: 'click', payload: { type: 'click', link_id: link.id, slug: link.slug, channel: link.channel, device: pick(['mobile', 'desktop']), creator: cr?.name }, at: now });
     if (r > 0.72) {
       const lead = makeLead(db.nextLead++, 'new'); lead.created_at = now; db.leads.unshift(lead);
       delta.leads = 1;
-      this.dispatch('event', { type: 'lead', payload: { name: lead.name, score: lead.score, channel: link.channel }, at: now });
+      this.dispatch('event', { type: 'lead', payload: { type: 'lead', lead_id: lead.id, score: lead.score, tier: lead.score >= 70 ? 'hot' : lead.score >= 40 ? 'warm' : 'cold', variant: 'A' }, at: now });
     }
-    if (r > 0.5 && r <= 0.72) this.dispatch('event', { type: 'capi_sent', payload: { event_name: pick(['Lead', 'ViewContent', 'Subscribe']), provider: pick(['meta', 'tiktok']) }, at: now });
+    if (r > 0.5 && r <= 0.72) this.dispatch('event', { type: 'capi_sent', payload: { type: 'capi_sent', event_name: pick(['Lead', 'ViewContent', 'Subscribe']), event_id: uid('ev'), mode: 'mock' }, at: now });
     if (r < 0.3) { delta.revenue_cents = Math.round(900 + rand() * 6000); delta.subs = 1; }
     for (const k of ['7d', '30d', '90d'] as const) {
       const K = db.kpis[k];
@@ -273,5 +301,5 @@ export function installMock() {
   setFetcher(mockFetch);
   setLiveSourceFactory(() => new MockEventSource());
   // eslint-disable-next-line no-console
-  console.info('[ofm] VITE_MOCK=1 — using in-app mock API. Demo logins: admin@demo.agency / member@demo.agency / owner@demo.agency (TOTP 123456), password demo1234');
+  console.info('[ofm] VITE_MOCK=1 — using in-app mock API. Demo logins: admin@demo.agency / member@demo.agency / owner@demo.agency (TOTP 123456), password demo-pass-2026');
 }

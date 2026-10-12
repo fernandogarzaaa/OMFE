@@ -3,7 +3,7 @@
 ## Run locally (mock mode, $0)
 ```bash
 uv venv && uv pip install -e ".[dev]"
-ofm seed-demo                      # demo tenant + admin@example.com / member@example.com (passwords printed)
+ofm seed-demo                      # demo tenant + admin@demo.agency / member@demo.agency (passwords printed; --known-passwords = demo-pass-2026)
 RUN_WORKER_IN_PROCESS=true ofm serve
 open http://localhost:8000/apply/demo   # public funnel;  /  = dashboard (SPA)
 ofm seed-demo --stream             # synthetic live events for the dashboard

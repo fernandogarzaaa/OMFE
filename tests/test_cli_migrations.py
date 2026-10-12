@@ -21,7 +21,7 @@ def test_cli_version_and_genkey():
 def test_seed_demo_prints_passwords_and_is_idempotent():
     r = runner.invoke(cli_app, ["seed-demo"])
     assert r.exit_code == 0, r.output
-    assert "admin@example.com  password:" in r.output and "member@example.com  password:" in r.output
+    assert "admin@demo.agency  password:" in r.output and "member@demo.agency  password:" in r.output
     r2 = runner.invoke(cli_app, ["seed-demo"])
     assert "already seeded" in r2.output and "users already exist" in r2.output
     r3 = runner.invoke(cli_app, ["seed-demo", "--admin-password", "Known-Passw0rd-123"])
@@ -44,7 +44,7 @@ def test_seeded_demo_login_and_kpis():
     c = TestClient(create_app())
     assert (
         c.post(
-            "/api/v1/auth/login", json={"email": "admin@example.com", "password": "Known-Passw0rd-123"}
+            "/api/v1/auth/login", json={"email": "admin@demo.agency", "password": "Known-Passw0rd-123"}
         ).status_code
         == 200
     )

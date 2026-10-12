@@ -122,11 +122,11 @@ describe('api client', () => {
   });
 
   it('uploads revenue as multipart with a JSON mapping and no JSON content-type', async () => {
-    queue(jsonResponse(200, { imported: 1, skipped: 0 }));
-    await api.revenue.import(new Blob(['a,b\n1,2']), { date: 'a', creator: 'b', amount: 'c' });
+    queue(jsonResponse(200, { imported: 1, skipped_duplicates: 0, errors: [], error_count: 0, revenue_cents: 100, subs: 0 }));
+    await api.revenue.import(new Blob(['a,b\n1,2']), { date: 'a', creator: 'b', gross: 'c' });
     const body = calls[0].init.body as FormData;
     expect(body).toBeInstanceOf(FormData);
-    expect(JSON.parse(String(body.get('mapping')))).toEqual({ date: 'a', creator: 'b', amount: 'c' });
+    expect(JSON.parse(String(body.get('mapping')))).toEqual({ date: 'a', creator: 'b', gross: 'c' });
     expect(hdr(calls[0], 'Content-Type')).toBeUndefined();
     expect(hdr(calls[0], 'X-CSRF-Token')).toBe('tok+123');
   });

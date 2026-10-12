@@ -5,10 +5,10 @@ const post = (path: string, body: unknown) => mockFetch('/api/v1' + path, { meth
 
 describe('mock API', () => {
   it('requires a TOTP code for the 2FA demo user and sets the csrf cookie', async () => {
-    const r1 = await post('/auth/login', { email: 'owner@demo.agency', password: 'demo1234' });
+    const r1 = await post('/auth/login', { email: 'owner@demo.agency', password: 'demo-pass-2026' });
     expect(r1.status).toBe(401);
     expect((await r1.json()).error.code).toBe('totp_required');
-    const r2 = await post('/auth/login', { email: 'owner@demo.agency', password: 'demo1234', totp: '123456' });
+    const r2 = await post('/auth/login', { email: 'owner@demo.agency', password: 'demo-pass-2026', totp: '123456' });
     expect(r2.status).toBe(200);
     expect(document.cookie).toContain('csrf_token=');
     const me = await (await mockFetch('/api/v1/auth/me')).json();
@@ -16,7 +16,7 @@ describe('mock API', () => {
   });
 
   it('forbids members from admin endpoints and refuses unsafe copy briefs', async () => {
-    await post('/auth/login', { email: 'member@demo.agency', password: 'demo1234' });
+    await post('/auth/login', { email: 'member@demo.agency', password: 'demo-pass-2026' });
     expect((await mockFetch('/api/v1/integrations')).status).toBe(403);
     const r = await post('/ai/copy', { kind: 'headline', brief: 'teen model', variants: 2 });
     expect(r.status).toBe(422);

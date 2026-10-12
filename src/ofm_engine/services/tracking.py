@@ -97,6 +97,20 @@ def record_click(
                 "device": ctx.device,
             },
         )
+        jobs.emit_event(
+            db,
+            link.tenant_id,
+            "link.clicked",
+            {
+                "link_id": str(link.id),
+                "slug": link.slug,
+                "channel": link.channel,
+                "campaign": link.campaign,
+                "creator_id": str(link.creator_id) if link.creator_id else None,
+                "device": ctx.device,
+            },
+            event_id,
+        )
         if link.capi_on_click:
             tctx = load_context(db, tenant_id=link.tenant_id)
             if tctx.config.features.meta_capi:

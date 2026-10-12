@@ -142,15 +142,28 @@ def seed_demo(
     count: Annotated[int, typer.Option(help="number of streamed events (0 = forever)")] = 0,
     admin_password: Annotated[str | None, typer.Option(envvar="DEMO_ADMIN_PASSWORD")] = None,
     member_password: Annotated[str | None, typer.Option(envvar="DEMO_MEMBER_PASSWORD")] = None,
+    known_passwords: Annotated[
+        bool,
+        typer.Option(
+            "--known-passwords",
+            help="use the documented demo password (demo-pass-2026) for both users; refused in production",
+        ),
+    ] = False,
 ) -> None:
-    """Create a demo tenant with admin@example.com / member@example.com (prints generated passwords)."""
+    """Create a demo tenant with admin@demo.agency / member@demo.agency (prints generated passwords)."""
     from sqlalchemy import select
 
     from .db import session_scope
     from .models import Tenant
+    from .services.seed import DEMO_KNOWN_PASSWORD, synthetic_event
     from .services.seed import seed_demo as _seed
-    from .services.seed import synthetic_event
 
+    if known_passwords:
+        if get_settings().is_production:
+            typer.secho("--known-passwords is refused when ENV=production", fg="red", err=True)
+            raise typer.Exit(2)
+        admin_password = admin_password or DEMO_KNOWN_PASSWORD
+        member_password = member_password or DEMO_KNOWN_PASSWORD
     _db_ready()
     with session_scope() as db:
         res = _seed(db, slug=slug, admin_password=admin_password, member_password=member_password)

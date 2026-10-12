@@ -22,7 +22,7 @@ trap cleanup EXIT
 echo "→ seeding demo tenant"
 ADMIN_PW="Smoke-Admin-Passw0rd-1"
 $OFM seed-demo --admin-password "$ADMIN_PW" --member-password "Smoke-Member-Passw0rd-1" >"$WORK/seed.txt"
-grep -q "admin@example.com  password:" "$WORK/seed.txt" && ok "seed-demo printed credentials" || bad "seed-demo output"
+grep -q "admin@demo.agency  password:" "$WORK/seed.txt" && ok "seed-demo printed credentials" || bad "seed-demo output"
 
 echo "→ booting server on $BASE"
 $PY -m uvicorn ofm_engine.app:create_app --factory --host 127.0.0.1 --port "$PORT" --log-level warning \
@@ -57,8 +57,8 @@ check "apply under-18 -> 422" "$(curl -s -o "$WORK/u18.json" -w '%{http_code}' -
 grep -q age_and_consent_required "$WORK/u18.json" && ok "under-18 error code" || bad "under-18 error code"
 
 echo "→ auth"
-check "login wrong password -> 401" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"email":"admin@example.com","password":"nope"}' "$BASE/api/v1/auth/login")" 401
-check "login admin" "$(curl -s -c "$JAR" -b "$JAR" -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"email\":\"admin@example.com\",\"password\":\"$ADMIN_PW\"}" "$BASE/api/v1/auth/login")" 200
+check "login wrong password -> 401" "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"email":"admin@demo.agency","password":"nope"}' "$BASE/api/v1/auth/login")" 401
+check "login admin" "$(curl -s -c "$JAR" -b "$JAR" -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"email\":\"admin@demo.agency\",\"password\":\"$ADMIN_PW\"}" "$BASE/api/v1/auth/login")" 200
 CSRF=$(awk '$6=="csrf_token"{print $7}' "$JAR" | tail -1)
 [ -n "$CSRF" ] && ok "csrf_token cookie issued" || bad "csrf cookie"
 check "GET /auth/me" "$(curl -s -b "$JAR" -o /dev/null -w '%{http_code}' "$BASE/api/v1/auth/me")" 200

@@ -27,8 +27,8 @@ export function parseCsv(text: string, maxRows = Infinity): string[][] {
 const GUESSES: Record<string, string[]> = {
   date: ['date', 'day', 'created', 'transaction date', 'paid_at'],
   creator: ['creator', 'model', 'creator_id', 'account', 'handle'],
-  amount: ['amount', 'revenue', 'net', 'earnings', 'gross', 'total'],
-  subs: ['subs', 'subscribers', 'new subs', 'subscriptions'],
+  gross: ['gross', 'amount', 'revenue', 'earnings', 'total', 'net'],
+  new_subs: ['new_subs', 'new subs', 'subs', 'subscribers', 'subscriptions'],
 };
 export function guessMapping(headers: string[]): Record<string, string> {
   const out: Record<string, string> = {};

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...db import get_db
-from ...models import ApiKey, AuditLog, OutboxJob, WebhookSubscription, utcnow
+from ...models import ApiKey, AuditLog, OutboxJob, User, WebhookSubscription, utcnow
 from ...security import crypto, tokens
 from ...security.ssrf import UnsafeURLError, check_webhook_url
 from ...services import ai_copy, audit, jobs
@@ -23,7 +23,14 @@ from ..serializers import api_key_out, audit_out, iso, job_out
 
 router = APIRouter(tags=["admin"])
 
-WEBHOOK_EVENTS = ("lead.created", "lead.stage_changed", "revenue.imported", "*")
+WEBHOOK_EVENTS = (
+    "lead.created",
+    "lead.stage_changed",
+    "link.clicked",
+    "revenue.imported",
+    "creator.updated",
+    "*",
+)
 
 
 # --------------------------------------------------------------------------- webhooks
@@ -314,4 +321,19 @@ def list_audit(
     stmt = select(AuditLog).where(AuditLog.tenant_id == p.tenant_id)
     if action:
         stmt = stmt.where(AuditLog.action == action)
-    return paginate(db, stmt, AuditLog, limit, cursor, audit_out)
+    page = paginate(db, stmt, AuditLog, limit, cursor, audit_out)
+    # Resolve a human-readable `actor` (user email / API key name) within the caller's tenant only.
+    ids = {parse_uuid(i["actor_id"], "actor") for i in page["items"] if i["actor_id"]}
+    names: dict[str, str] = {}
+    if ids:
+        for uid, email in db.execute(
+            select(User.id, User.email).where(User.tenant_id == p.tenant_id, User.id.in_(ids))
+        ):
+            names[str(uid)] = email
+        for kid, kname in db.execute(
+            select(ApiKey.id, ApiKey.name).where(ApiKey.tenant_id == p.tenant_id, ApiKey.id.in_(ids))
+        ):
+            names[str(kid)] = f"api key: {kname}"
+    for item in page["items"]:
+        item["actor"] = names.get(item["actor_id"] or "", item["actor_type"] or "system")
+    return page
