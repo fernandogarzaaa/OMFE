@@ -1,0 +1,36 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/attribution.py
+  <module>                             0.0%    0/2   killed  WEAK
+      L13   constant          `255` -> `256`  [survived]
+      L40   constant          `False` -> `True`  [survived]
+  ClickContext.as_dict               100.0%    1/1   killed  ok
+  clean_param                        100.0%    2/2   killed  ok
+  build_fbc                           50.0%    2/4   killed  WEAK
+      L57   arithmetic        `time.time() * 1000` -> `(time.time() / 1000)`  [survived]
+      L57   constant          `1000` -> `1001`  [survived]
+  build_fbp                           33.3%    2/6   killed  WEAK
+      L62   constant          `1000` -> `1001`  [survived]
+      L63   arithmetic        `2**31` -> `(2 * 31)`  [survived]
+      L63   constant          `2` -> `3`  [survived]
+      L63   constant          `31` -> `32`  [survived]
+  valid_fbc                           50.0%    1/2   killed  WEAK
+      L68   boolean           `bool(value) and bool(_FBC_R...` -> `(bool(value) or bool(_FBC_R...`  [survived]
+  valid_fbp                          100.0%    1/1   killed  ok
+  parse_user_agent                    96.3%   26/27  killed  WEAK
+      L98   boolean           `"fban" in low or "fbav" in low` -> `('fban' in low and 'fbav' i...`  [survived]
+  referrer_host                       66.7%    4/6   killed  WEAK
+      L121  return-value      `return ""` -> `return None`  [not covered]
+      L122  constant          `255` -> `256`  [survived]
+      ! L121  failure path (except-branch): `except ValueError` branch is never executed by any test
+  extract_click_context              100.0%    2/2   killed  ok
+  append_params                       66.7%    2/3   killed  WEAK
+      L153  constant          `True` -> `False`  [survived]
+  safe_destination                   100.0%    4/4   killed  ok
+
+Mutants: 60  killed: 47  survived: 12  not covered: 1  timeouts: 0
+Failure-path gaps: 1
+Mutation score: 78.3%
+Time: baseline 24.3s, total 232.0s
+note: sampled 60 of 80 mutants (--max-mutants)
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

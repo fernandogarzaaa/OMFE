@@ -63,7 +63,9 @@ jobs:
         run: pytest --cov=ofm_engine --cov-branch --cov-report=term --cov-report=xml:coverage.xml --cov-fail-under=90
       - name: Hardened test gate (quality/gate.py)
         if: matrix.db == 'sqlite'
-        run: python quality/gate.py --manifest quality/test-manifest.json
+        run: |
+          python quality/gate.py --manifest quality/test-manifest.json
+          python quality/gate_selftest.py
       - name: Smoke (mock mode)
         if: matrix.db == 'sqlite'
         env:

@@ -1,0 +1,43 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/api/deps.py
+  <module>                             0.0%    0/1   killed  WEAK
+      L31   constant          `False` -> `True`  [survived]
+  Principal.actor_id                   0.0%    0/2   killed  WEAK
+      L35   return-value      `return self.user_id or self...` -> `return None`  [survived]
+      L35   boolean           `self.user_id or self.api_ke...` -> `(self.user_id and self.api_...`  [survived]
+  Principal.is_admin                   0.0%    0/4   killed  WEAK
+      L39   return-value      `return self.kind == "user" ...` -> `return None`  [not covered]
+      L39   boolean           `self.kind == "user" and sel...` -> `(self.kind == 'user' or sel...`  [not covered]
+      L39   comparison        `self.kind == "user"` -> `(self.kind != 'user')`  [not covered]
+      L39   comparison        `self.role == "admin"` -> `(self.role != 'admin')`  [not covered]
+  client_ip                            0.0%    0/1   killed  WEAK
+      L43   return-value      `return request.client.host ...` -> `return None`  [survived]
+  check_csrf                         100.0%    3/3   killed  ok
+  _principal_from_api_key             75.0%    9/12  killed  WEAK
+      L58   remove-raise      `raise ApiError(401, "invali...` -> `pass`  [survived]
+      L63   boolean           `tenant is None or not tenan...` -> `(tenant is None and (not te...`  [survived]
+      L64   remove-raise      `raise ApiError(401, "invali...` -> `pass`  [not covered]
+      ! L62   failure path (external-call): calls `db.get` but no test simulates that call failing
+      ! L64   failure path (raise): `raise ApiError(401, 'invalid_api_key', 'invalid API key')` is never triggered by any test
+  load_user_from_access               85.7%   12/14  killed  WEAK
+      L84   boolean           `tenant is None or not tenan...` -> `(tenant is None and (not te...`  [survived]
+      L85   remove-raise      `raise ApiError(401, "unauth...` -> `pass`  [not covered]
+      ! L85   failure path (raise): `raise ApiError(401, 'unauthorized', 'tenant inactive')` is never triggered by any test
+  get_principal                       80.0%    4/5   killed  WEAK
+      L97   remove-raise      `raise ApiError(401, "unauth...` -> `pass`  [survived]
+  require_roles                      100.0%    1/1   killed  ok
+  require_roles._dep                 100.0%    3/3   killed  ok
+  get_current_user                   100.0%    1/1   killed  ok
+      ! L120  failure path (external-call): calls `db.get` but no test simulates that call failing
+  tenant_ctx                           0.0%    0/1   killed  WEAK
+      L126  return-value      `return load_context(db, ten...` -> `return None`  [not covered]
+  parse_uuid                          33.3%    1/3   killed  WEAK
+      L133  swallow-exception `raise ApiError(404, "not_fo...` -> `pass`  [survived]
+      L133  remove-raise      `raise ApiError(404, "not_fo...` -> `pass`  [survived]
+
+Mutants: 51  killed: 34  survived: 10  not covered: 7  timeouts: 0
+Failure-path gaps: 4
+Mutation score: 66.7%
+Time: baseline 19.5s, total 285.1s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

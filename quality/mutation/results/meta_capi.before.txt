@@ -1,0 +1,48 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/adapters/meta_capi.py
+  <module>                             0.0%    0/6   killed  WEAK
+      L60   arithmetic        `7 * 24 * 3600` -> `(7 * 24 / 3600)`  [survived]
+      L60   arithmetic        `7 * 24` -> `(7 / 24)`  [survived]
+      L60   constant          `7` -> `8`  [survived]
+      L60   constant          `24` -> `25`  [survived]
+      L60   constant          `3600` -> `3601`  [survived]
+      L80   constant          `False` -> `True`  [survived]
+  build_server_event                  76.9%   20/26  killed  WEAK
+      L86   comparison        `len(ev.event_name) > 50` -> `(len(ev.event_name) >= 50)`  [survived]
+      L86   constant          `50` -> `51`  [survived]
+      L92   comparison        `ev.event_time > current + 60` -> `(ev.event_time >= current +...`  [survived]
+      L92   constant          `60` -> `61`  [survived]
+      L94   comparison        `current - ev.event_time > M...` -> `(current - ev.event_time >=...`  [survived]
+      L124  constant          `True` -> `False`  [not covered]
+  build_request_body                  83.3%    5/6   killed  WEAK
+      L131  comparison        `len(events) > 1000` -> `(len(events) >= 1000)`  [survived]
+  mock_handler                        33.3%    4/12  killed  WEAK
+      L143  swallow-exception `return httpx.Response(400, ...` -> `pass`  [not covered]
+      L143  return-value      `return httpx.Response(400, ...` -> `return None`  [not covered]
+      L143  constant          `400` -> `401`  [not covered]
+      L146  return-value      `return httpx.Response(400, ...` -> `return None`  [not covered]
+      L146  constant          `400` -> `401`  [not covered]
+      L146  constant          `100` -> `101`  [not covered]
+      L147  constant          `12` -> `13`  [survived]
+      L149  constant          `200` -> `201`  [survived]
+      ! L143  failure path (except-branch): `except ValueError` branch is never executed by any test
+      ! L148  failure path (external-call): calls `httpx.Response` but no test simulates that call failing
+  MetaCredentials.live                 0.0%    0/2   killed  WEAK
+      L161  return-value      `return bool(self.pixel_id a...` -> `return None`  [survived]
+      L161  boolean           `self.pixel_id and self.acce...` -> `(self.pixel_id or self.acce...`  [survived]
+  MetaCapiClient.__init__            100.0%    1/1   killed  ok
+      ! L169  failure path (external-call): calls `httpx.MockTransport` but no test simulates that call failing
+  MetaCapiClient.endpoint            100.0%    1/1   killed  ok
+  MetaCapiClient.send                100.0%    3/3   killed  ok
+      ! L181  failure path (external-call): calls `self.http.request` but no test simulates that call failing
+  MetaCapiClient.check_auth           66.7%    2/3   killed  WEAK
+      L187  boolean           `self.creds.pixel_id or "moc...` -> `(self.creds.pixel_id and 'm...`  [survived]
+      ! L188  failure path (external-call): calls `self.http.request` but no test simulates that call failing
+
+Mutants: 60  killed: 36  survived: 17  not covered: 7  timeouts: 0
+Failure-path gaps: 5
+Mutation score: 60.0%
+Time: baseline 6.7s, total 132.4s
+note: sampled 60 of 61 mutants (--max-mutants)
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

@@ -1,0 +1,65 @@
+name: mutation
+
+# Mutation testing of the security/core modules with testteeth (github.com/fernandogarzaaa/testteeth).
+# Manual and non-blocking: it is slow and its score is a signal for reviewers, not a merge gate.
+# Results and the before/after table live in quality/mutation/RESULTS.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: "space-separated subset (crypto passwords signing ssrf tokens deps hashing meta_capi scoring attribution); empty = all"
+        required: false
+        default: ""
+      mutant_cap:
+        description: "max mutants per module (evenly sampled)"
+        required: false
+        default: "60"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/*.lock
+      - name: Install (hash-pinned) + testteeth
+        run: |
+          python -m pip install --require-hashes -r requirements/build.lock
+          python -m pip install --require-hashes -r requirements/dev.lock
+          python -m pip install --no-deps --no-build-isolation -e .
+          python -m pip install "testteeth>=0.2,<0.3"
+      - name: Run mutation testing (after = full hardened suite)
+        env:
+          MUTANT_CAP: ${{ inputs.mutant_cap }}
+          MODULES: ${{ inputs.modules }}
+        run: |
+          # shellcheck disable=SC2086
+          bash quality/mutation/run.sh after $MODULES | tee mutation-summary.txt
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### testteeth mutation scores"
+            echo '```'
+            cat mutation-summary.txt 2>/dev/null || echo "no summary"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mutation-results
+          path: quality/mutation/results/*.after.*
+          if-no-files-found: ignore

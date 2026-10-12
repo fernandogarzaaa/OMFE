@@ -1,0 +1,40 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/scoring.py
+  <module>                             7.1%    1/14  killed  WEAK
+      L16   constant          `5` -> `6`  [survived]
+      L17   constant          `15` -> `16`  [survived]
+      L18   constant          `25` -> `26`  [survived]
+      L19   constant          `32` -> `33`  [survived]
+      L20   constant          `35` -> `36`  [survived]
+      L24   constant          `35` -> `36`  [survived]
+      L25   constant          `1_000_000` -> `1000001`  [survived]
+      L26   constant          `4` -> `5`  [survived]
+      ... 5 more surviving
+  follower_points                     41.7%    5/12  killed  WEAK
+      L43   comparison        `total_followers <= 0` -> `(total_followers < 0)`  [survived]
+      L43   constant          `0` -> `1`  [survived]
+      L46   arithmetic        `total + 1` -> `(total - 1)`  [survived]
+      L46   constant          `1` -> `2`  [survived]
+      L46   arithmetic        `cap + 1` -> `(cap - 1)`  [survived]
+      L46   constant          `1` -> `2`  [survived]
+      L46   constant          `2` -> `3`  [survived]
+  tier_for                            66.7%    4/6   killed  WEAK
+      L51   comparison        `score >= t["hot"]` -> `(score > t['hot'])`  [survived]
+      L53   comparison        `score >= t["warm"]` -> `(score > t['warm'])`  [survived]
+  score_lead                          45.8%   11/24  killed  WEAK
+      L72   constant          `0` -> `1`  [survived]
+      L72   constant          `0` -> `1`  [survived]
+      L75   constant          `1` -> `2`  [survived]
+      L75   comparison        `v >= 1000` -> `(v > 1000)`  [survived]
+      L75   constant          `1000` -> `1001`  [survived]
+      L76   arithmetic        `min(max(big_platforms - 1, ...` -> `(min(max(big_platforms - 1,...`  [survived]
+      L76   constant          `1` -> `2`  [survived]
+      L76   constant          `3` -> `4`  [survived]
+      ... 5 more surviving
+
+Mutants: 56  killed: 21  survived: 35  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 37.5%
+Time: baseline 6.8s, total 169.6s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.
