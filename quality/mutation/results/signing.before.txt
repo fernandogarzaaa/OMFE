@@ -1,0 +1,17 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/signing.py
+  compute_signature                  100.0%    3/3   killed  ok
+  sign                               100.0%    2/2   killed  ok
+  parse_header                        72.7%    8/11  killed  WEAK
+      L44   swallow-exception `raise SignatureError("inval...` -> `pass`  [survived]
+      L44   remove-raise      `raise SignatureError("inval...` -> `pass`  [survived]
+      L47   boolean           `ts is None or not sigs` -> `(ts is None and (not sigs))`  [survived]
+  verify                              90.0%    9/10  killed  WEAK
+      L58   comparison        `abs(current - ts) > tolerance` -> `(abs(current - ts) >= toler...`  [survived]
+
+Mutants: 26  killed: 22  survived: 4  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 84.6%
+Time: baseline 3.1s, total 36.6s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

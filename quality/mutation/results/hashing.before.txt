@@ -1,0 +1,29 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/hashing.py
+  sha256                             100.0%    1/1   killed  ok
+  is_hashed                          100.0%    1/1   killed  ok
+  normalize_email                    100.0%    1/1   killed  ok
+  normalize_phone                     62.5%    5/8   killed  WEAK
+      L46   boolean           `not had_plus and default_co...` -> `(not had_plus or default_co...`  [survived]
+      L48   boolean           `needs_cc and len(digits) <= 10` -> `(needs_cc or len(digits) <=...`  [survived]
+      L48   constant          `10` -> `11`  [survived]
+  normalize_name                     100.0%    4/4   killed  ok
+  normalize_city                       0.0%    0/1   killed  WEAK
+      L59   return-value      `return normalize_name(value)` -> `return None`  [not covered]
+  normalize_state                    100.0%    2/2   killed  ok
+  normalize_zip                      100.0%    3/3   killed  ok
+  normalize_country                   50.0%    1/2   killed  WEAK
+      L75   constant          `2` -> `3`  [survived]
+  normalize_dob                      100.0%    3/3   killed  ok
+  normalize_gender                    66.7%    2/3   killed  WEAK
+      L88   return-value      `return "m"` -> `return None`  [not covered]
+  hash_field                         100.0%    6/6   killed  ok
+  hash_user_data                     100.0%    2/2   killed  ok
+  keyed_hash                         100.0%    1/1   killed  ok
+
+Mutants: 38  killed: 32  survived: 4  not covered: 2  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 84.2%
+Time: baseline 3.3s, total 43.7s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

@@ -1,0 +1,34 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/tokens.py
+  create_access_token                 75.0%    3/4   killed  WEAK
+      L44   constant          `False` -> `True`  [survived]
+  decode_access_token                 81.8%    9/11  killed  WEAK
+      L84   constant          `0` -> `1`  [survived]
+      L85   constant          `False` -> `True`  [survived]
+  new_refresh_token                   50.0%    1/2   killed  WEAK
+      L93   constant          `48` -> `49`  [survived]
+  sha256_hex                         100.0%    1/1   killed  ok
+  new_csrf_token                       0.0%    0/2   killed  WEAK
+      L102  return-value      `return secrets.token_urlsaf...` -> `return None`  [survived]
+      L102  constant          `32` -> `33`  [survived]
+  csrf_matches                        83.3%    5/6   killed  WEAK
+      L107  return-value      `return False` -> `return None`  [survived]
+  new_api_key                         66.7%    2/3   killed  WEAK
+      L115  constant          `32` -> `33`  [survived]
+  parse_api_key                       78.6%   11/14  killed  WEAK
+      L122  constant          `2` -> `3`  [survived]
+      L123  comparison        `len(parts[2]) < 20` -> `(len(parts[2]) <= 20)`  [survived]
+      L123  constant          `20` -> `21`  [survived]
+  new_totp_secret                    100.0%    1/1   killed  ok
+  totp_uri                           100.0%    1/1   killed  ok
+  verify_totp                         66.7%    6/9   killed  WEAK
+      L139  boolean           `not code.isdigit() or len(c...` -> `(not code.isdigit() and len...`  [survived]
+      L140  return-value      `return False` -> `return None`  [survived]
+      L142  constant          `1` -> `2`  [survived]
+
+Mutants: 54  killed: 40  survived: 14  not covered: 0  timeouts: 0
+Failure-path gaps: 0
+Mutation score: 74.1%
+Time: baseline 8.3s, total 98.9s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.

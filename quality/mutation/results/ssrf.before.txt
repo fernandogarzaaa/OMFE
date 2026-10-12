@@ -1,0 +1,23 @@
+testteeth: mutation grade for all selected code
+
+src/ofm_engine/security/ssrf.py
+  _default_resolver                    0.0%    0/3   killed  WEAK
+      L42   return-value      `return sorted({str(info[4][...` -> `return None`  [not covered]
+      L42   constant          `4` -> `5`  [not covered]
+      L42   constant          `0` -> `1`  [not covered]
+      ! L41   failure path (external-call): calls `socket.getaddrinfo` but no test simulates that call failing
+  is_public_ip                       100.0%   10/10  killed  ok
+  allowed_integration_hosts           50.0%    1/2   killed  WEAK
+      L70   remove-call       `hosts.add(host.lower())` -> `pass`  [survived]
+  check_integration_url              100.0%    6/6   killed  ok
+  check_webhook_url                   83.3%   20/24  killed  WEAK
+      L92   boolean           `parts.username or parts.pas...` -> `(parts.username and parts.p...`  [survived]
+      L94   constant          `443` -> `444`  [survived]
+      L94   constant          `8443` -> `8444`  [survived]
+      L99   return-value      `return url` -> `return None`  [not covered]
+
+Mutants: 45  killed: 37  survived: 4  not covered: 4  timeouts: 0
+Failure-path gaps: 1
+Mutation score: 82.2%
+Time: baseline 4.5s, total 52.6s
+Next: `testteeth suggest` prints an agent-ready brief for each surviving mutant.
