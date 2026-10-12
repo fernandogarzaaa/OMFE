@@ -169,6 +169,7 @@ class Creator(TimestampMixin, SoftDeleteMixin, Base):
     avatar_url: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
     bio_links: Mapped[list[Any]] = mapped_column(JSON, default=list, nullable=False)
+    channels: Mapped[list[Any]] = mapped_column(JSON, default=list, nullable=False)
 
 
 class TrackingLink(TimestampMixin, SoftDeleteMixin, Base):

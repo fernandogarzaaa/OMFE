@@ -14,9 +14,9 @@ import pyotp
 
 from ..settings import get_settings
 
-ACCESS_COOKIE = "ofm_at"
-REFRESH_COOKIE = "ofm_rt"
-CSRF_COOKIE = "ofm_csrf"
+ACCESS_COOKIE = "access_token"
+REFRESH_COOKIE = "refresh_token"
+CSRF_COOKIE = "csrf_token"
 CSRF_HEADER = "X-CSRF-Token"
 ALGORITHM = "HS256"
 ROLES = ("admin", "member")

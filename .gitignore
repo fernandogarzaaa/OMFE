@@ -6,7 +6,9 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
-dist/
+/dist/
+src/ofm_engine/web/dist/*
+!src/ofm_engine/web/dist/.gitkeep
 build/
 *.egg-info/
 node_modules/
