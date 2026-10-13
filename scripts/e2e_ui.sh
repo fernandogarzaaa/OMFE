@@ -69,7 +69,7 @@ req GET "/api/v1/revenue?creator_id=$NEWC&from=2026-10-01&to=2026-10-31"; expect
 req POST /api/v1/ai/copy '{"kind":"headline","brief":"We grow fitness creators","variants":2}'; expect "ai copy" 200 "len(d['variants'])==2 and d['mock'] is True"
 
 echo "Automations / admin"
-req POST /api/v1/automations/webhooks '{"url":"https://hooks.zapier.com/hooks/catch/1/e2e","events":["lead.created","link.clicked","creator.updated"]}'; expect "create webhook" 201 "d['secret'].startswith('whsec_')"
+req POST /api/v1/automations/webhooks '{"url":"https://hooks.zapier.com/e2e-placeholder","events":["lead.created","link.clicked","creator.updated"]}'; expect "create webhook" 201 "d['secret'].startswith('whsec_')"
 WID=$(body | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 req GET /api/v1/automations/webhooks; expect "list webhooks" 200 "any(w['id']=='$WID' for w in d['items'])"
 req DELETE "/api/v1/automations/webhooks/$WID"; expect "delete webhook" 200

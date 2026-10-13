@@ -106,7 +106,7 @@ function init() {
   }
   const users: TeamUser[] = DEMO_USERS.map(({ id, email, name, role, totp_enabled }) => ({ id, email, name, role, totp_enabled, is_active: true, created_at: daysAgo(120), last_login_at: daysAgo(1) }));
   const webhooks: Webhook[] = [
-    { id: 'wh_1', url: 'https://hooks.zapier.com/hooks/catch/123/abc', events: ['lead.created', 'lead.stage_changed'], active: true, created_at: daysAgo(12) },
+    { id: 'wh_1', url: 'https://hooks.zapier.com/demo-placeholder', events: ['lead.created', 'lead.stage_changed'], active: true, created_at: daysAgo(12) },
     { id: 'wh_2', url: 'https://n8n.northstar.io/webhook/revenue', events: ['revenue.imported'], active: true, created_at: daysAgo(3) },
   ];
   const job = (id: string, kind: string, status: Job['status'], attempts: number, ago: number, last_error: string | null = null): Job =>
